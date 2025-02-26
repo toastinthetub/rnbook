@@ -1,3 +1,4 @@
+mod color;
 mod constant;
 mod state;
 mod term;

@@ -1,5 +1,8 @@
-use crate::constant::*;
 use crate::term::DoubleBuffer;
+use crate::{
+    constant::*,
+    util::{ModeT, OpenMode},
+};
 
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition},
@@ -13,11 +16,15 @@ use std::time::{Duration, Instant};
 
 pub struct State {
     pub buffer: DoubleBuffer,
+    pub mode: ModeT,
 }
 
 impl State {
     pub fn new(buffer: DoubleBuffer) -> Self {
-        Self { buffer }
+        Self {
+            buffer,
+            mode: ModeT::BROWSE,
+        }
     }
 
     pub fn init(&mut self) {
@@ -120,9 +127,7 @@ impl State {
         if event::poll(Duration::from_millis(10)).unwrap() {
             match event::read().unwrap() {
                 Event::Key(key_event) => return self.handle_key_event(key_event),
-                Event::Resize(new_width, new_height) => {
-                    self.handle_resize_event(new_width, new_height)
-                }
+                Event::Resize(_, _) => self.handle_resize_event(),
                 _ => {} // Ignore mouse events and other stuff
             }
         }
@@ -148,12 +153,25 @@ impl State {
     }
 
     /// handles **resize events**
-    fn handle_resize_event(&mut self, new_width: u16, new_height: u16) {
+    fn handle_resize_event(&mut self) {
         self.buffer.resize();
     }
 
     /// is passed any raw character presses
     fn handle_char(&self, c: char) {
-        // println!("Pressed: {}", c);
+        match &self.mode {
+            ModeT::BROWSE => {}
+            ModeT::OPEN(open_mode) => match open_mode {
+                OpenMode::EDIT => {
+                    // find the buffer (should be somewhere in state) and push this char to it
+                }
+                OpenMode::READ => {
+                    // we should only really be worried about commands
+                }
+            },
+            ModeT::COMMAND => {
+                // push to command bar
+            }
+        }
     }
 }

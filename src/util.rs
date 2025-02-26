@@ -38,6 +38,19 @@ pub enum OpenMode {
 }
 
 pub enum ModeT {
+    COMMAND,
     BROWSE,
     OPEN(OpenMode),
+}
+
+pub struct CommandBar {
+    pub mode: String,
+    pub buffer: String,
+}
+
+impl CommandBar {
+    pub fn str(&mut self) -> String {
+        let s = String::new();
+        s
+    }
 }
