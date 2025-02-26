@@ -23,7 +23,7 @@ impl State {
     pub fn init(&mut self) {
         let mut stdout = std::io::stdout();
         let _ = execute!(stdout, terminal::EnterAlternateScreen);
-        let _ = execute!(stdout, crossterm::cursor::DisableBlinking);
+        let _ = execute!(stdout, crossterm::cursor::Hide);
         self.buffer.clear();
         self.buffer.flush(&mut stdout);
         let _ = terminal::enable_raw_mode();
