@@ -38,49 +38,122 @@ impl State {
     pub fn event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.init();
         let mut stdout = stdout();
-        //    terminal::enable_raw_mode().unwrap();
-        //    execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide).unwrap();
-
         let mut last_tick = Instant::now();
-        let tick_rate = Duration::from_millis(33); // 30fps = 33ms frametime
+        let tick_rate = Duration::from_millis(33); // ~30 FPS
 
         loop {
-            if event::poll(Duration::from_millis(10)).unwrap() {
-                if let Event::Key(KeyEvent {
-                    code, modifiers, ..
-                }) = event::read().unwrap()
-                {
-                    match code {
-                        KeyCode::Esc => break,
-                        KeyCode::Char(c) => {
-                            if modifiers.contains(KeyModifiers::CONTROL) {
-                                if c == 'c' {
-                                    break; // CONTROL-C BREAK
-                                } else {
-                                    // DO NOTHING; OTHER CTRL+CHAR
-                                    // handle_modified(c);
-                                }
-                            } else {
-                                // handle_char(c);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
+            if self.handle_event() {
+                break;
             }
 
             if last_tick.elapsed() >= tick_rate {
                 last_tick = Instant::now();
+                self.render(&mut stdout)?;
             }
-
-            self.render(&mut stdout).unwrap();
         }
         self.deconstruct();
         Ok(())
     }
+    /*
+        pub fn event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+            self.init();
+            let mut stdout = stdout();
+            //    terminal::enable_raw_mode().unwrap();
+            //    execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide).unwrap();
+
+            let mut last_tick = Instant::now();
+            let tick_rate = Duration::from_millis(33); // 30fps = 33ms frametime
+
+            loop {
+                if event::poll(Duration::from_millis(10)).unwrap() {
+                    if let Event::Key(KeyEvent {
+                        code, modifiers, ..
+                    }) = event::read().unwrap()
+                    {
+                        match code {
+                            KeyCode::Esc => break,
+                            KeyCode::Char(c) => {
+                                if modifiers.contains(KeyModifiers::CONTROL) {
+                                    if c == 'c' {
+                                        break; // CONTROL-C BREAK
+                                    } else {
+                                        // DO NOTHING; OTHER CTRL+CHAR
+                                        // handle_modified(c);
+                                    }
+                                } else {
+                                    // handle_char(c);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                if last_tick.elapsed() >= tick_rate {
+                    last_tick = Instant::now();
+                }
+                self.render(&mut stdout).unwrap();
+            }
+            self.deconstruct();
+            Ok(())
+        }
+    */
     pub fn render(&mut self, stdout: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
-        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
+        if self.buffer.too_small_flag {
+            // todo draw_too_small_warning()
+            return Ok(());
+        }
+
+        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
+        self.write_str_at(
+            self.buffer.width / 2,
+            self.buffer.height / 2,
+            "hello world!",
+        );
         self.buffer.flush(stdout);
         Ok(())
+    }
+}
+
+impl State {
+    fn handle_event(&mut self) -> bool {
+        if event::poll(Duration::from_millis(10)).unwrap() {
+            match event::read().unwrap() {
+                Event::Key(key_event) => return self.handle_key_event(key_event),
+                Event::Resize(new_width, new_height) => {
+                    self.handle_resize_event(new_width, new_height)
+                }
+                _ => {} // Ignore mouse events and other stuff
+            }
+        }
+        false
+    }
+
+    /// Handles **keyboard input**
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
+        match key_event.code {
+            KeyCode::Esc => return true,
+            KeyCode::Char(c) => {
+                if key_event.modifiers.contains(KeyModifiers::CONTROL) {
+                    if c == 'c' {
+                        return true; // Exit on CTRL+C
+                    }
+                } else {
+                    self.handle_char(c);
+                }
+            }
+            _ => {}
+        }
+        false
+    }
+
+    /// handles **resize events**
+    fn handle_resize_event(&mut self, new_width: u16, new_height: u16) {
+        self.buffer.resize();
+    }
+
+    /// is passed any raw character presses
+    fn handle_char(&self, c: char) {
+        // println!("Pressed: {}", c);
     }
 }

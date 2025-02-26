@@ -18,6 +18,14 @@ impl Entry {
             content,
         }
     }
+    /// this function assumes that there is a rectangle surrounding the
+    /// terminal window and will operate with |x| = x - 2
+    pub fn entry_preview(&mut self, x: usize) -> String {
+        /*let mut s: String = */
+        String::new()
+
+        // TODO
+    }
 }
 /*
     let now = Local::now(); // Gets the current local time

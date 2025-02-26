@@ -15,25 +15,36 @@ pub struct DoubleBuffer {
     back_buffer: HashMap<(usize, usize), char>,
     pub width: usize,
     pub height: usize,
+    pub too_small_flag: bool,
 }
 
 impl DoubleBuffer {
     pub fn new() -> Self {
+        let mut too_small_flag: bool = false;
         let (width, height) = terminal::size().unwrap();
+        if width < 60 || height < 4 {
+            too_small_flag = true;
+        }
         Self {
             front_buffer: HashMap::new(),
             back_buffer: HashMap::new(),
             width: width as usize,
             height: height as usize,
+            too_small_flag,
         }
     }
 
     /// recalculate terminal size in case of resize
     pub fn resize(&mut self) {
         let (width, height) = terminal::size().unwrap();
+        if width < 60 || height < 4 {
+            self.too_small_flag = true;
+        }
         self.width = width as usize;
         self.height = height as usize;
     }
+
+    pub fn resize_to(&mut self, x: usize, y: usize) {}
 
     /// write to the **back buffer**
     pub fn write(&mut self, x: usize, y: usize, ch: char) {
