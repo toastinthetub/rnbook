@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 
 use crate::constant::*;
 
+const TOO_SMALL_WARNING: &str = "> 60x4";
+
 pub struct DoubleBuffer {
     front_buffer: HashMap<(usize, usize), char>,
     back_buffer: HashMap<(usize, usize), char>,
@@ -36,16 +38,26 @@ impl DoubleBuffer {
 
     /// recalculate terminal size in case of resize
     pub fn resize(&mut self) {
-        let (width, height) = terminal::size().unwrap();
-        if width < 60 || height < 4 {
-            self.too_small_flag = true;
+        let (new_width, new_height) = terminal::size().unwrap();
+        self.too_small_flag = new_width < 60 || new_height < 4;
+
+        // If the size changed, clear & reset the buffers
+        if self.width != new_width as usize || self.height != new_height as usize {
+            self.width = new_width as usize;
+            self.height = new_height as usize;
+
+            // Reset buffers
+            self.front_buffer.clear();
+            self.back_buffer.clear();
+
+            // Fill back buffer with spaces to prevent garbage display
+            for y in 0..self.height {
+                for x in 0..self.width {
+                    self.back_buffer.insert((x, y), ' ');
+                }
+            }
         }
-        self.width = width as usize;
-        self.height = height as usize;
     }
-
-    pub fn resize_to(&mut self, x: usize, y: usize) {}
-
     /// write to the **back buffer**
     pub fn write(&mut self, x: usize, y: usize, ch: char) {
         if x < self.width && y < self.height {
@@ -158,5 +170,14 @@ impl crate::state::State {
         for (i, ch) in str.char_indices() {
             self.buffer.write(x + i, y, ch);
         }
+    }
+    pub fn write_too_small_warning(&mut self) {
+        //        self.buffer.clear();
+        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
+        self.write_str_at(
+            (self.buffer.width / 2) - (TOO_SMALL_WARNING.len() / 2),
+            self.buffer.height / 2,
+            TOO_SMALL_WARNING,
+        );
     }
 }

@@ -1,4 +1,5 @@
 use crate::term::DoubleBuffer;
+use crate::util::log_message;
 use crate::{
     constant::*,
     util::{ModeT, OpenMode},
@@ -107,16 +108,13 @@ impl State {
     */
     pub fn render(&mut self, stdout: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
         if self.buffer.too_small_flag {
-            // todo draw_too_small_warning()
+            log_message("too_small_warning!");
+            self.write_too_small_warning();
+            self.buffer.flush(stdout);
             return Ok(());
         }
-
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
-        self.write_str_at(
-            self.buffer.width / 2,
-            self.buffer.height / 2,
-            "hello world!",
-        );
+        self.write_str_at((self.buffer.width / 2) - 1, self.buffer.height / 2, "X");
         self.buffer.flush(stdout);
         Ok(())
     }
@@ -125,6 +123,7 @@ impl State {
 impl State {
     fn handle_event(&mut self) -> bool {
         if event::poll(Duration::from_millis(10)).unwrap() {
+            crate::util::log_message("event!");
             match event::read().unwrap() {
                 Event::Key(key_event) => return self.handle_key_event(key_event),
                 Event::Resize(_, _) => self.handle_resize_event(),
@@ -134,7 +133,7 @@ impl State {
         false
     }
 
-    /// Handles **keyboard input**
+    /// handles **keyboard input**
     fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
         match key_event.code {
             KeyCode::Esc => return true,
@@ -155,6 +154,7 @@ impl State {
     /// handles **resize events**
     fn handle_resize_event(&mut self) {
         self.buffer.resize();
+        crate::util::log_message("resize event, resize() called");
     }
 
     /// is passed any raw character presses

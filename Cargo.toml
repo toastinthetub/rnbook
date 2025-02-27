@@ -7,3 +7,6 @@ edition = "2021"
 chrono = "0.4.39"
 colored = "3.0.0"
 crossterm = "0.28.1"
+
+[profile.release]
+debug = true

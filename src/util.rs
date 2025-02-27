@@ -1,4 +1,6 @@
 use chrono::Local;
+use std::fs::OpenOptions;
+use std::io::Write;
 
 pub struct Entry {
     pub label: String,
@@ -18,15 +20,8 @@ impl Entry {
             content,
         }
     }
-    /// this function assumes that there is a rectangle surrounding the
-    /// terminal window and will operate with |x| = x - 2
-    pub fn entry_preview(&mut self, x: usize) -> String {
-        /*let mut s: String = */
-        String::new()
-
-        // TODO
-    }
 }
+
 /*
     let now = Local::now(); // Gets the current local time
     println!("Current local time: {}", now.format("%Y-%m-%d %H:%M:%S"));
@@ -53,4 +48,14 @@ impl CommandBar {
         let s = String::new();
         s
     }
+}
+
+pub fn log_message(message: &str) {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("app.log")
+        .expect("Failed to open log file");
+
+    writeln!(file, "[{}] {}", 'b', message).expect("Failed to write to log file");
 }

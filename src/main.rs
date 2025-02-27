@@ -25,23 +25,5 @@ fn main() {
     state.buffer.flush(&mut stdout);
 
     let (w, h) = crossterm::terminal::size().unwrap();
-    /*
-        state.write_line_horizontal(1, (w - 1) as usize, 1);
-        state.write_line_horizontal(1, (w - 1) as usize, (h - 1) as usize);
-        /*
-            for i in 0..=h - 1 {
-                state
-                    .write_line_horizontal(1, (w - 1) as usize, i as usize)
-                    .unwrap();
-            }
-        */
-        state.write_line_horizontal(1, (w - 1) as usize, (h - 1) as usize);
-
-        state.write_line_vertical(1, 0, h as usize);
-        state.write_line_vertical(w as usize, 0, h as usize);
-
-        state.buffer.flush(&mut stdout);
-        // state.buffer.write()
-    */
     state.event_loop().unwrap();
 }
