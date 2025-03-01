@@ -9,6 +9,7 @@ use std::io::{stdout, Write};
 use std::time::{Duration, Instant};
 
 use crate::constant::*;
+use crate::util::Entry;
 
 const TOO_SMALL_WARNING: &str = "> 60x4";
 
@@ -172,7 +173,7 @@ impl crate::state::State {
         }
     }
     pub fn write_too_small_warning(&mut self) {
-        //        self.buffer.clear();
+        //        self.buffer.clear(); we do not need to do this
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
         self.write_str_at(
             (self.buffer.width / 2) - (TOO_SMALL_WARNING.len() / 2),
@@ -180,4 +181,21 @@ impl crate::state::State {
             TOO_SMALL_WARNING,
         );
     }
+    pub fn write_loaded_entries(&mut self) {
+        let n_fits = self.buffer.height - 4;
+    }
 }
+
+/*fn stringify_entry(entry: &Entry, x: usize) -> String {
+    let a = String::new();
+    let b = String::new();
+    let c = String::new();
+    let x = x - 2
+
+
+    while s.len() <= x {
+
+    }
+
+    todo!()
+}*/

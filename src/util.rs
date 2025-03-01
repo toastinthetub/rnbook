@@ -20,6 +20,15 @@ impl Entry {
             content,
         }
     }
+    pub fn stringify(&self, x: usize) -> String {
+        let mut a = String::new();
+        let mut b = String::new();
+
+        let eighty = (x / 100) * 80;
+
+        // let str: String = format!("{}{}{}{}", self.label) //{label}{space}{VERT_LINE}{date}{whitespace}{VERT_LINE}
+        String::new()
+    }
 }
 
 /*
@@ -27,11 +36,13 @@ impl Entry {
     println!("Current local time: {}", now.format("%Y-%m-%d %H:%M:%S"));
 */
 
+#[derive(PartialEq, Eq)]
 pub enum OpenMode {
     EDIT,
     READ,
 }
 
+#[derive(PartialEq, Eq)]
 pub enum ModeT {
     COMMAND,
     BROWSE,

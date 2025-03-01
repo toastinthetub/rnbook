@@ -1,10 +1,13 @@
 use crate::term::DoubleBuffer;
-use crate::util::log_message;
+use crate::util::{log_message, Entry};
 use crate::{
     constant::*,
     util::{ModeT, OpenMode},
 };
 
+use crate::parser::Parser;
+
+use chrono::ParseError;
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition},
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
@@ -12,29 +15,106 @@ use crossterm::{
     terminal::{self, ClearType},
     ExecutableCommand,
 };
+use dirs::home_dir;
+use std::fs::{File, OpenOptions};
 use std::io::{stdout, Write};
+use std::io::{BufRead, BufReader};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 pub struct State {
     pub buffer: DoubleBuffer,
     pub mode: ModeT,
+    pub entry_path: String,
+    pub loaded: Vec<crate::util::Entry>,
 }
 
 impl State {
     pub fn new(buffer: DoubleBuffer) -> Self {
+        let mut config_path = home_dir().expect("Failed to get home directory");
+        config_path.push(".config/rnbook.config");
+
+        let default_entry_path = format!("{}/rnbook_entries", home_dir().unwrap().display());
+        let mut entry_path = None;
+
+        if let Ok(file) = File::open(&config_path) {
+            let reader = BufReader::new(file);
+            for line in reader.lines() {
+                if let Ok(line) = line {
+                    if let Some(entry) = line.strip_prefix("ENTRY_PATH=") {
+                        entry_path = Some(entry.trim().to_string());
+                        break;
+                    }
+                } else {
+                    //
+                }
+            }
+        }
+
+        let entry_path = entry_path.unwrap_or_else(|| {
+            let mut file = OpenOptions::new()
+                .create(true)
+                .write(true)
+                .truncate(true)
+                .open(&config_path)
+                .expect("failed to create config file");
+
+            writeln!(file, "ENTRY_PATH={}", default_entry_path)
+                .expect("failed to write to config file");
+
+            default_entry_path
+        });
+
         Self {
             buffer,
             mode: ModeT::BROWSE,
+            entry_path,
+            loaded: Vec::new(),
         }
     }
 
-    pub fn init(&mut self) {
+    pub fn load_entries(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&self.entry_path)
+            .expect("failed to create config file");
+        let mut parser = Parser::new(file);
+
+        let entries = parser.get_entries()?;
+
+        self.loaded = entries;
+
+        Ok(())
+    }
+
+    pub fn push_entry(&mut self, entry: Entry) -> Result<(), Box<dyn std::error::Error>> {
+        let file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(&self.entry_path)
+            .expect("failed to create config file");
+
+        let parser = Parser::new(file);
+        parser.add_entry(&self.entry_path, &entry)?;
+
+        Ok(())
+    }
+
+    pub fn init(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut stdout = std::io::stdout();
         let _ = execute!(stdout, terminal::EnterAlternateScreen);
         let _ = execute!(stdout, crossterm::cursor::Hide);
         self.buffer.clear();
         self.buffer.flush(&mut stdout);
         let _ = terminal::enable_raw_mode();
+
+        self.mode = ModeT::BROWSE;
+        self.load_entries()?;
+
+        Ok(())
     }
 
     pub fn deconstruct(&mut self) {
@@ -44,7 +124,7 @@ impl State {
     }
 
     pub fn event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        self.init();
+        self.init()?;
         let mut stdout = stdout();
         let mut last_tick = Instant::now();
         let tick_rate = Duration::from_millis(33); // ~30 FPS
@@ -108,9 +188,16 @@ impl State {
     */
     pub fn render(&mut self, stdout: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
         if self.buffer.too_small_flag {
-            log_message("too_small_warning!");
+            // log_message("too_small_warning!");
             self.write_too_small_warning();
             self.buffer.flush(stdout);
+            return Ok(());
+        }
+        if self.mode == ModeT::OPEN(OpenMode::READ) {
+            // TODO self.write_stuff()
+            return Ok(());
+        } else if self.mode == ModeT::BROWSE {
+            // TODO self.write_entries()
             return Ok(());
         }
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
@@ -123,7 +210,7 @@ impl State {
 impl State {
     fn handle_event(&mut self) -> bool {
         if event::poll(Duration::from_millis(10)).unwrap() {
-            crate::util::log_message("event!");
+            // crate::util::log_message("event!");
             match event::read().unwrap() {
                 Event::Key(key_event) => return self.handle_key_event(key_event),
                 Event::Resize(_, _) => self.handle_resize_event(),
@@ -154,7 +241,7 @@ impl State {
     /// handles **resize events**
     fn handle_resize_event(&mut self) {
         self.buffer.resize();
-        crate::util::log_message("resize event, resize() called");
+        // crate::util::log_message("resize event, resize() called");
     }
 
     /// is passed any raw character presses
