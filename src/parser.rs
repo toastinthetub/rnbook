@@ -1,20 +1,17 @@
-use crate::util::Entry;
 use std::error::Error;
 use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Read, Write};
+use std::io::{BufRead, BufReader, Write};
+use std::path::PathBuf;
 
-pub struct Parser {
-    pub file: File,
-}
+use crate::util::Entry;
+
+#[derive(Debug, Clone)]
+pub struct Parser;
 
 impl Parser {
-    pub fn new(f: File) -> Self {
-        Self { file: f }
-    }
-
-    pub fn get_entries(&mut self) -> Result<Vec<Entry>, Box<dyn Error>> {
-        let mut content = String::new();
-        self.file.read_to_string(&mut content)?;
+    pub fn get_entries(&self, file_path: &PathBuf) -> Result<Vec<Entry>, Box<dyn Error>> {
+        let file = File::open(file_path)?;
+        let lines = BufReader::new(file).lines();
 
         let mut entries = Vec::new();
         let mut label = String::new();
@@ -22,19 +19,18 @@ impl Parser {
         let mut entry_content = String::new();
         let mut in_entry = false;
 
-        for line in content.lines() {
-            if line.trim().is_empty() {
-                if in_entry {
-                    entries.push(Entry {
-                        label: label.clone(),
-                        date: date.clone(),
-                        content: entry_content.trim().to_string(),
-                    });
-                    in_entry = false;
-                    label.clear();
-                    date.clear();
-                    entry_content.clear();
-                }
+        for line_result in lines {
+            let line = line_result?;
+            if line.trim().is_empty() && in_entry {
+                entries.push(Entry {
+                    label,
+                    date,
+                    content: entry_content.trim().to_string(),
+                });
+                label = String::new();
+                date = String::new();
+                entry_content.clear();
+                in_entry = false;
             } else if !in_entry {
                 let parts: Vec<&str> = line.splitn(2, ':').collect();
                 if parts.len() == 2 {
@@ -43,7 +39,7 @@ impl Parser {
                     in_entry = true;
                 }
             } else {
-                entry_content.push_str(line);
+                entry_content.push_str(&line);
                 entry_content.push('\n');
             }
         }
@@ -58,7 +54,8 @@ impl Parser {
 
         Ok(entries)
     }
-    pub fn add_entry(&self, file_path: &str, entry: &Entry) -> Result<(), Box<dyn Error>> {
+
+    pub fn add_entry(&self, file_path: &PathBuf, entry: &Entry) -> Result<(), Box<dyn Error>> {
         let mut file = OpenOptions::new()
             .create(true)
             .append(true)

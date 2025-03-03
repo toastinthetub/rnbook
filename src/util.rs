@@ -2,6 +2,7 @@ use chrono::Local;
 use std::fs::OpenOptions;
 use std::io::Write;
 
+#[derive(Debug, Clone)]
 pub struct Entry {
     pub label: String,
     pub date: String, // this shouldnt be a string its going to bite me later
@@ -21,13 +22,28 @@ impl Entry {
         }
     }
     pub fn stringify(&self, x: usize) -> String {
-        let mut a = String::new();
-        let mut b = String::new();
+        let mut str = String::new();
 
-        let eighty = (x / 100) * 80;
+        let hunnid = x - 2;
 
-        // let str: String = format!("{}{}{}{}", self.label) //{label}{space}{VERT_LINE}{date}{whitespace}{VERT_LINE}
-        String::new()
+        let eighty = (hunnid * 80) / 100;
+        let max_num_label_chars = eighty - 1;
+        let c: Vec<char> = self.label.chars().collect();
+
+        for (index, character) in c.iter().enumerate() {
+            if index < max_num_label_chars {
+                str.push(*character)
+            } else {
+                for _ in index..=max_num_label_chars {
+                    str.push(' ')
+                }
+            }
+        }
+
+        str.push(crate::constant::VERTICAL_LINE);
+        str.push_str(&self.date);
+        // let str: String = format!("{}{}{}{}", self.label) //{label}{space}{VERT_LINE}{date}{whitespace}{VERT_LINE
+        str
     }
 }
 
@@ -36,19 +52,20 @@ impl Entry {
     println!("Current local time: {}", now.format("%Y-%m-%d %H:%M:%S"));
 */
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OpenMode {
     EDIT,
     READ,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModeT {
     COMMAND,
     BROWSE,
     OPEN(OpenMode),
 }
 
+#[derive(Debug, Clone)]
 pub struct CommandBar {
     pub mode: String,
     pub buffer: String,

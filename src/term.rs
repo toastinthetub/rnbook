@@ -13,6 +13,7 @@ use crate::util::Entry;
 
 const TOO_SMALL_WARNING: &str = "> 60x4";
 
+#[derive(Debug, Clone)]
 pub struct DoubleBuffer {
     front_buffer: HashMap<(usize, usize), char>,
     back_buffer: HashMap<(usize, usize), char>,
@@ -58,6 +59,7 @@ impl DoubleBuffer {
                 }
             }
         }
+        self.flush(&mut std::io::stdout());
     }
     /// write to the **back buffer**
     pub fn write(&mut self, x: usize, y: usize, ch: char) {

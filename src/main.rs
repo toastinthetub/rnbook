@@ -1,6 +1,8 @@
 mod color;
+mod config;
 mod constant;
 mod parser;
+mod render;
 mod state;
 mod term;
 mod util;

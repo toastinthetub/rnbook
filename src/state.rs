@@ -1,13 +1,17 @@
-use crate::term::DoubleBuffer;
-use crate::util::{log_message, Entry};
 use crate::{
+    config::Config,
     constant::*,
-    util::{ModeT, OpenMode},
+    parser::Parser,
+    term::DoubleBuffer,
+    util::{log_message, Entry, ModeT, OpenMode},
 };
 
-use crate::parser::Parser;
+use std::{
+    fs::{File, OpenOptions},
+    io::{stdout, BufRead, BufReader, Write},
+    time::{Duration, Instant},
+};
 
-use chrono::ParseError;
 use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition},
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
@@ -15,74 +19,35 @@ use crossterm::{
     terminal::{self, ClearType},
     ExecutableCommand,
 };
-use dirs::home_dir;
-use std::fs::{File, OpenOptions};
-use std::io::{stdout, Write};
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use std::time::{Duration, Instant};
 
+#[derive(Debug, Clone)]
 pub struct State {
     pub buffer: DoubleBuffer,
     pub mode: ModeT,
-    pub entry_path: String,
+    pub config: crate::config::Config,
     pub loaded: Vec<crate::util::Entry>,
+    pub string_buffer: Vec<String>,
 }
 
 impl State {
     pub fn new(buffer: DoubleBuffer) -> Self {
-        let mut config_path = home_dir().expect("Failed to get home directory");
-        config_path.push(".config/rnbook.config");
-
-        let default_entry_path = format!("{}/rnbook_entries", home_dir().unwrap().display());
-        let mut entry_path = None;
-
-        if let Ok(file) = File::open(&config_path) {
-            let reader = BufReader::new(file);
-            for line in reader.lines() {
-                if let Ok(line) = line {
-                    if let Some(entry) = line.strip_prefix("ENTRY_PATH=") {
-                        entry_path = Some(entry.trim().to_string());
-                        break;
-                    }
-                } else {
-                    //
-                }
-            }
-        }
-
-        let entry_path = entry_path.unwrap_or_else(|| {
-            let mut file = OpenOptions::new()
-                .create(true)
-                .write(true)
-                .truncate(true)
-                .open(&config_path)
-                .expect("failed to create config file");
-
-            writeln!(file, "ENTRY_PATH={}", default_entry_path)
-                .expect("failed to write to config file");
-
-            default_entry_path
-        });
+        let config = Config::load().unwrap();
 
         Self {
             buffer,
             mode: ModeT::BROWSE,
-            entry_path,
+            config,
             loaded: Vec::new(),
+            string_buffer: Vec::new(),
         }
     }
 
     pub fn load_entries(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&self.entry_path)
-            .expect("failed to create config file");
-        let mut parser = Parser::new(file);
+        let file = self.config.entries_file.clone();
 
-        let entries = parser.get_entries()?;
+        let parser = Parser;
+
+        let entries = parser.get_entries(&file)?;
 
         self.loaded = entries;
 
@@ -90,16 +55,8 @@ impl State {
     }
 
     pub fn push_entry(&mut self, entry: Entry) -> Result<(), Box<dyn std::error::Error>> {
-        let file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .truncate(true)
-            .open(&self.entry_path)
-            .expect("failed to create config file");
-
-        let parser = Parser::new(file);
-        parser.add_entry(&self.entry_path, &entry)?;
-
+        let parser = Parser;
+        parser.add_entry(&self.config.entries_file, &entry)?;
         Ok(())
     }
 
@@ -113,6 +70,7 @@ impl State {
 
         self.mode = ModeT::BROWSE;
         self.load_entries()?;
+        self.populate_string_buffer();
 
         Ok(())
     }
@@ -141,6 +99,11 @@ impl State {
         }
         self.deconstruct();
         Ok(())
+    }
+    pub fn populate_string_buffer(&mut self) {
+        for entry in self.loaded.iter() {
+            self.string_buffer.push(entry.stringify(self.buffer.width));
+        }
     }
     /*
         pub fn event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -185,7 +148,7 @@ impl State {
             self.deconstruct();
             Ok(())
         }
-    */
+
     pub fn render(&mut self, stdout: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
         if self.buffer.too_small_flag {
             // log_message("too_small_warning!");
@@ -204,7 +167,7 @@ impl State {
         self.write_str_at((self.buffer.width / 2) - 1, self.buffer.height / 2, "X");
         self.buffer.flush(stdout);
         Ok(())
-    }
+    } */
 }
 
 impl State {
