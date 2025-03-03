@@ -1,10 +1,6 @@
 use crate::{
-    config::Config,
-    constant::*,
-    parser::Parser,
     state::State,
-    term::DoubleBuffer,
-    util::{log_message, Entry, ModeT, OpenMode},
+    util::{log_message, ModeT, OpenMode},
 };
 
 use std::io::Write;

@@ -1,17 +1,10 @@
 use crossterm::{
-    cursor,
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
-    execute,
-    terminal::{self, ClearType},
+    cursor, execute,
+    terminal::{self},
 };
-use std::collections::HashMap;
-use std::io::{stdout, Write};
-use std::time::{Duration, Instant};
 
 use crate::constant::*;
-use crate::util::Entry;
-
-use colored::{Color, ColoredString, Colorize};
+use std::{collections::HashMap, io::Write};
 
 const TOO_SMALL_WARNING: &str = "> 60x4 TERM SIZE REQUIRED";
 const NO_ENTRIES_WARNING: &str = "< not an entry to be found :) >";
@@ -20,6 +13,7 @@ const NO_ENTRIES_WARNING: &str = "< not an entry to be found :) >";
 pub struct DoubleBuffer {
     front_buffer: HashMap<(usize, usize), char>,
     back_buffer: HashMap<(usize, usize), char>,
+    color_buffer: HashMap<(usize, usize), char>,
     pub width: usize,
     pub height: usize,
     pub too_small_flag: bool,
@@ -35,6 +29,7 @@ impl DoubleBuffer {
         Self {
             front_buffer: HashMap::new(),
             back_buffer: HashMap::new(),
+            color_buffer: HashMap::new(),
             width: width as usize,
             height: height as usize,
             too_small_flag,

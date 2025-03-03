@@ -1,7 +1,9 @@
-use std::error::Error;
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
-use std::path::PathBuf;
+use std::{
+    error::Error,
+    fs::{File, OpenOptions},
+    io::{BufRead, BufReader, Write},
+    path::PathBuf
+}
 
 use crate::util::Entry;
 

@@ -1,7 +1,10 @@
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::io::{Error, ErrorKind};
-use std::path::PathBuf;
+
+use std::{
+    fs,
+    io::{Error, ErrorKind},
+    path::PathBuf,
+};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
@@ -23,7 +26,7 @@ impl Default for Config {
 }
 
 impl Config {
-    /// Loads the config. If it doesn't exist, this will create
+    /// loads the config. if it doesn't exist, this will create
     /// a default config file and return that.
     pub fn load() -> Result<Self, std::io::Error> {
         let mut config_path = dirs::config_dir()
@@ -43,7 +46,6 @@ impl Config {
         }
     }
 
-    /// Saves the current config to the config directory.
     pub fn save(&self) -> Result<(), std::io::Error> {
         let mut config_dir = dirs::config_dir()
             .ok_or_else(|| Error::new(ErrorKind::NotFound, "Couldn't find config directory"))?;

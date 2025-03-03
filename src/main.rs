@@ -1,4 +1,3 @@
-mod color;
 mod config;
 mod constant;
 mod parser;
@@ -11,13 +10,9 @@ use term::DoubleBuffer;
 
 use crossterm::{
     cursor::MoveTo,
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
-    terminal::{self, Clear, ClearType},
+    terminal::{Clear, ClearType},
 };
-use std::collections::HashMap;
-use std::io::{stdout, Write};
-use std::time::{Duration, Instant};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = std::io::stdout();

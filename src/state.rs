@@ -1,6 +1,12 @@
+use crossterm::{
+    cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition},
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
+    execute,
+    terminal::{self},
+};
+
 use crate::{
     config::Config,
-    constant::*,
     parser::Parser,
     term::DoubleBuffer,
     util::{log_message, Entry, ModeT, OpenMode},
@@ -10,14 +16,6 @@ use std::{
     fs::{File, OpenOptions},
     io::{stdout, BufRead, BufReader, Write},
     time::{Duration, Instant},
-};
-
-use crossterm::{
-    cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition},
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
-    execute,
-    terminal::{self, ClearType},
-    ExecutableCommand,
 };
 
 #[derive(Debug, Clone)]

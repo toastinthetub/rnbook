@@ -1,6 +1,9 @@
 use chrono::Local;
-use std::fs::OpenOptions;
-use std::io::Write;
+
+use std::{
+    fs::OpenOptions,
+    io::Write
+}
 
 #[derive(Debug, Clone)]
 pub struct Entry {

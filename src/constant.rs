@@ -1,5 +1,3 @@
-use colored::{Color, ColoredString, Colorize};
-use std::io::Write;
 // constants
 
 /*
@@ -21,7 +19,3 @@ pub const WHITESPACE: char = ' ';
 // pub const MENU_OPTION_NEW_ENTRY: &str = "[] NEW ENTRY";
 // pub const MENU_OPTION_BROWSE_ENTRIES: &str = "[] BROWSE ENTRIES";
 // pub const MENU_OPTION_QUIT: &str = "[] QUIT";
-
-pub fn selected(s: &str) -> ColoredString {
-    s.to_owned().white().bold().on_bright_black()
-}
