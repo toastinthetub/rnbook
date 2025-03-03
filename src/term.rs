@@ -1,5 +1,6 @@
 use crossterm::{
     cursor, execute,
+    style::{Color, ResetColor, SetBackgroundColor, SetForegroundColor},
     terminal::{self},
 };
 
@@ -13,7 +14,8 @@ const NO_ENTRIES_WARNING: &str = "< not an entry to be found :) >";
 pub struct DoubleBuffer {
     front_buffer: HashMap<(usize, usize), char>,
     back_buffer: HashMap<(usize, usize), char>,
-    color_buffer: HashMap<(usize, usize), char>,
+    fg_color_buffer: HashMap<(usize, usize), Color>,
+    bg_color_buffer: HashMap<(usize, usize), Color>,
     pub width: usize,
     pub height: usize,
     pub too_small_flag: bool,
@@ -29,7 +31,8 @@ impl DoubleBuffer {
         Self {
             front_buffer: HashMap::new(),
             back_buffer: HashMap::new(),
-            color_buffer: HashMap::new(),
+            fg_color_buffer: HashMap::new(),
+            bg_color_buffer: HashMap::new(),
             width: width as usize,
             height: height as usize,
             too_small_flag,
@@ -38,31 +41,38 @@ impl DoubleBuffer {
 
     /// recalculate terminal size in case of resize
     pub fn resize(&mut self) {
-        let (new_width, new_height) = terminal::size().unwrap();
-        self.too_small_flag = new_width < 60 || new_height < 4;
+        if let Ok((new_width, new_height)) = terminal::size() {
+            self.too_small_flag = new_width < 60 || new_height < 4;
+            let new_width = new_width as usize;
+            let new_height = new_height as usize;
 
-        // If the size changed, clear & reset the buffers
-        if self.width != new_width as usize || self.height != new_height as usize {
-            self.width = new_width as usize;
-            self.height = new_height as usize;
-
-            // Reset buffers
+            self.width = new_width;
+            self.height = new_height;
             self.front_buffer.clear();
             self.back_buffer.clear();
-
-            // Fill back buffer with spaces to prevent garbage display
-            for y in 0..self.height {
+            self.fg_color_buffer.clear();
+            self.bg_color_buffer.clear();
+            for y in 0..=self.height {
                 for x in 0..self.width {
                     self.back_buffer.insert((x, y), ' ');
+                    self.fg_color_buffer.insert((x, y), Color::White);
+                    self.bg_color_buffer.insert((x, y), Color::Black);
                 }
             }
+            self.flush(&mut std::io::stdout());
         }
-        self.flush(&mut std::io::stdout());
     }
+
     /// write to the **back buffer**
     pub fn write(&mut self, x: usize, y: usize, ch: char) {
+        self.write_colored(x, y, ch, Color::White, Color::Black);
+    }
+
+    pub fn write_colored(&mut self, x: usize, y: usize, ch: char, fg: Color, bg: Color) {
         if x < self.width && y < self.height {
             self.back_buffer.insert((x, y), ch);
+            self.fg_color_buffer.insert((x, y), fg); // fg
+            self.bg_color_buffer.insert((x, y), bg); // bg
         }
     }
 
@@ -78,11 +88,16 @@ impl DoubleBuffer {
     pub fn flush(&mut self, stdout: &mut impl Write) {
         for (&pos, &ch) in &self.back_buffer {
             if self.front_buffer.get(&pos) != Some(&ch) {
+                let fg = self.fg_color_buffer.get(&pos).unwrap_or(&Color::White);
+                let bg = self.bg_color_buffer.get(&pos).unwrap_or(&Color::Black);
+
                 execute!(stdout, cursor::MoveTo(pos.0 as u16, pos.1 as u16)).unwrap();
+                execute!(stdout, SetForegroundColor(*fg)).unwrap();
+                execute!(stdout, SetBackgroundColor(*bg)).unwrap();
                 print!("{}", ch);
             }
         }
-
+        execute!(stdout, ResetColor).unwrap();
         stdout.flush().unwrap();
         std::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
         self.back_buffer.clear();

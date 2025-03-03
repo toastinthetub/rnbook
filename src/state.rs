@@ -2,6 +2,7 @@ use crossterm::{
     cursor::{DisableBlinking, EnableBlinking, MoveTo, RestorePosition, SavePosition},
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
+    style::Color,
     terminal::{self},
 };
 
@@ -80,6 +81,8 @@ impl State {
 
         self.populate_string_buffer();
 
+        self.buffer.clear();
+        self.buffer.resize();
         Ok(())
     }
 
