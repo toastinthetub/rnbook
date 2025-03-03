@@ -5,7 +5,10 @@ use crossterm::{
 };
 
 use crate::constant::*;
-use std::{collections::HashMap, io::Write};
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+};
 
 const TOO_SMALL_WARNING: &str = "> 60x4 TERM SIZE REQUIRED";
 const NO_ENTRIES_WARNING: &str = "< not an entry to be found :) >";
@@ -14,8 +17,13 @@ const NO_ENTRIES_WARNING: &str = "< not an entry to be found :) >";
 pub struct DoubleBuffer {
     front_buffer: HashMap<(usize, usize), char>,
     back_buffer: HashMap<(usize, usize), char>,
-    fg_color_buffer: HashMap<(usize, usize), Color>,
-    bg_color_buffer: HashMap<(usize, usize), Color>,
+
+    front_fg_buffer: HashMap<(usize, usize), Color>,
+    front_bg_buffer: HashMap<(usize, usize), Color>,
+
+    back_fg_buffer: HashMap<(usize, usize), Color>,
+    back_bg_buffer: HashMap<(usize, usize), Color>,
+
     pub width: usize,
     pub height: usize,
     pub too_small_flag: bool,
@@ -31,8 +39,12 @@ impl DoubleBuffer {
         Self {
             front_buffer: HashMap::new(),
             back_buffer: HashMap::new(),
-            fg_color_buffer: HashMap::new(),
-            bg_color_buffer: HashMap::new(),
+
+            front_fg_buffer: HashMap::new(),
+            front_bg_buffer: HashMap::new(),
+            back_fg_buffer: HashMap::new(),
+            back_bg_buffer: HashMap::new(),
+
             width: width as usize,
             height: height as usize,
             too_small_flag,
@@ -41,22 +53,24 @@ impl DoubleBuffer {
 
     /// recalculate terminal size in case of resize
     pub fn resize(&mut self) {
-        if let Ok((new_width, new_height)) = terminal::size() {
-            self.too_small_flag = new_width < 60 || new_height < 4;
-            let new_width = new_width as usize;
-            let new_height = new_height as usize;
+        if let Ok((tw, th)) = terminal::size() {
+            self.width = tw as usize;
+            self.height = th as usize;
+            self.too_small_flag = tw < 60 || th < 4;
 
-            self.width = new_width;
-            self.height = new_height;
             self.front_buffer.clear();
+            self.front_fg_buffer.clear();
+            self.front_bg_buffer.clear();
+
             self.back_buffer.clear();
-            self.fg_color_buffer.clear();
-            self.bg_color_buffer.clear();
-            for y in 0..=self.height {
+            self.back_fg_buffer.clear();
+            self.back_bg_buffer.clear();
+
+            for y in 0..self.height {
                 for x in 0..self.width {
                     self.back_buffer.insert((x, y), ' ');
-                    self.fg_color_buffer.insert((x, y), Color::White);
-                    self.bg_color_buffer.insert((x, y), Color::Black);
+                    self.back_fg_buffer.insert((x, y), Color::White);
+                    self.back_bg_buffer.insert((x, y), Color::Black);
                 }
             }
             self.flush(&mut std::io::stdout());
@@ -67,12 +81,11 @@ impl DoubleBuffer {
     pub fn write(&mut self, x: usize, y: usize, ch: char) {
         self.write_colored(x, y, ch, Color::White, Color::Black);
     }
-
     pub fn write_colored(&mut self, x: usize, y: usize, ch: char, fg: Color, bg: Color) {
         if x < self.width && y < self.height {
             self.back_buffer.insert((x, y), ch);
-            self.fg_color_buffer.insert((x, y), fg); // fg
-            self.bg_color_buffer.insert((x, y), bg); // bg
+            self.back_fg_buffer.insert((x, y), fg);
+            self.back_bg_buffer.insert((x, y), bg);
         }
     }
 
@@ -83,29 +96,134 @@ impl DoubleBuffer {
             }
         }
     }
-
-    /// flushes only the **changed** characters to the screen
     pub fn flush(&mut self, stdout: &mut impl Write) {
-        for (&pos, &ch) in &self.back_buffer {
-            if self.front_buffer.get(&pos) != Some(&ch) {
-                let fg = self.fg_color_buffer.get(&pos).unwrap_or(&Color::White);
-                let bg = self.bg_color_buffer.get(&pos).unwrap_or(&Color::Black);
+        // If the front buffer is empty (e.g. after a resize), force a full redraw
+        if self.front_buffer.is_empty() {
+            for y in 0..self.height {
+                for x in 0..self.width {
+                    let pos = (x, y);
+                    let new_char = *self.back_buffer.get(&pos).unwrap_or(&' ');
+                    let new_fg = *self
+                        .back_fg_buffer
+                        .get(&pos)
+                        .unwrap_or(&crossterm::style::Color::White);
+                    let new_bg = *self
+                        .back_bg_buffer
+                        .get(&pos)
+                        .unwrap_or(&crossterm::style::Color::Black);
+                    execute!(
+                        stdout,
+                        cursor::MoveTo(x as u16, y as u16),
+                        SetForegroundColor(new_fg),
+                        SetBackgroundColor(new_bg)
+                    )
+                    .unwrap();
+                    print!("{}", new_char);
+                }
+            }
+        } else {
+            // Use union of keys to ensure that even cells not updated in the back buffer get redrawn if needed
+            let all_positions: HashSet<(usize, usize)> = self
+                .front_buffer
+                .keys()
+                .chain(self.back_buffer.keys())
+                .cloned()
+                .collect();
 
+            for pos in all_positions {
+                // Only consider positions within current bounds
+                if pos.0 >= self.width || pos.1 >= self.height {
+                    continue;
+                }
+                let old_char = *self.front_buffer.get(&pos).unwrap_or(&' ');
+                let new_char = *self.back_buffer.get(&pos).unwrap_or(&' ');
+                let old_fg = *self
+                    .front_fg_buffer
+                    .get(&pos)
+                    .unwrap_or(&crossterm::style::Color::White);
+                let new_fg = *self
+                    .back_fg_buffer
+                    .get(&pos)
+                    .unwrap_or(&crossterm::style::Color::White);
+                let old_bg = *self
+                    .front_bg_buffer
+                    .get(&pos)
+                    .unwrap_or(&crossterm::style::Color::Black);
+                let new_bg = *self
+                    .back_bg_buffer
+                    .get(&pos)
+                    .unwrap_or(&crossterm::style::Color::Black);
+
+                // Redraw if any aspect has changed
+                if old_char != new_char || old_fg != new_fg || old_bg != new_bg {
+                    execute!(
+                        stdout,
+                        cursor::MoveTo(pos.0 as u16, pos.1 as u16),
+                        SetForegroundColor(new_fg),
+                        SetBackgroundColor(new_bg)
+                    )
+                    .unwrap();
+                    print!("{}", new_char);
+                }
+            }
+        }
+
+        // Reset terminal colors and flush output
+        execute!(stdout, ResetColor).unwrap();
+        stdout.flush().unwrap();
+
+        // Swap buffers so that the newly drawn frame becomes the "old" frame
+        std::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
+        std::mem::swap(&mut self.front_fg_buffer, &mut self.back_fg_buffer);
+        std::mem::swap(&mut self.front_bg_buffer, &mut self.back_bg_buffer);
+
+        // Clear the back buffers for the next frame
+        self.back_buffer.clear();
+        self.back_fg_buffer.clear();
+        self.back_bg_buffer.clear();
+    }
+}
+/*
+    pub fn flush(&mut self, stdout: &mut impl Write) {
+        use crossterm::{
+            cursor, execute,
+            style::{ResetColor, SetBackgroundColor, SetForegroundColor},
+        };
+
+        for (&pos, &new_char) in &self.back_buffer {
+            let old_char = self.front_buffer.get(&pos);
+
+            let new_fg = self.back_fg_buffer.get(&pos).unwrap_or(&Color::White);
+            let old_fg = self.front_fg_buffer.get(&pos);
+
+            let new_bg = self.back_bg_buffer.get(&pos).unwrap_or(&Color::Black);
+            let old_bg = self.front_bg_buffer.get(&pos);
+
+            let char_changed = old_char != Some(&new_char);
+            let fg_changed = old_fg != Some(new_fg);
+            let bg_changed = old_bg != Some(new_bg);
+
+            if char_changed || fg_changed || bg_changed {
                 execute!(stdout, cursor::MoveTo(pos.0 as u16, pos.1 as u16)).unwrap();
-                execute!(stdout, SetForegroundColor(*fg)).unwrap();
-                execute!(stdout, SetBackgroundColor(*bg)).unwrap();
-                print!("{}", ch);
+                execute!(stdout, SetForegroundColor(*new_fg)).unwrap();
+                execute!(stdout, SetBackgroundColor(*new_bg)).unwrap();
+                print!("{}", new_char);
             }
         }
         execute!(stdout, ResetColor).unwrap();
         stdout.flush().unwrap();
+
         std::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
+        std::mem::swap(&mut self.front_fg_buffer, &mut self.back_fg_buffer);
+        std::mem::swap(&mut self.front_bg_buffer, &mut self.back_bg_buffer);
+
         self.back_buffer.clear();
+        self.back_fg_buffer.clear();
+        self.back_bg_buffer.clear();
     }
 }
-
-/*
-impl DoubleBuffer {
+*/
+/* impl DoubleBuffer {
     /// this function needs to be flushed.
     pub fn write_line_horizontal(
         &mut self,
@@ -187,6 +305,11 @@ impl crate::state::State {
             self.buffer.write(x + i, y, ch);
         }
     }
+    pub fn write_colored_str_at(&mut self, x: usize, y: usize, str: &str, fg: Color, bg: Color) {
+        for (i, ch) in str.char_indices() {
+            self.buffer.write_colored(x + i, y, ch, fg, bg)
+        }
+    }
     pub fn write_too_small_warning(&mut self) {
         //        self.buffer.clear(); we do not need to do this
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
@@ -210,14 +333,18 @@ impl crate::state::State {
         let max_idx: u32 = self.buffer.height as u32 - 4;
         if num_entries > 0 {
             for i in 0..=self.n_fits {
-                if i <= num_entries as u32 && !i > max_idx {
+                if i < num_entries as u32 && i <= max_idx {
                     self.write_str_at(
                         2,
                         idx as usize,
                         &self
                             .loaded
-                            .get(i as usize)
-                            .unwrap()
+                            .get((i as usize).checked_sub(1).unwrap_or(i as usize))
+                            .unwrap_or(&crate::util::Entry {
+                                label: String::from("it didnt work"),
+                                date: String::from("datedate"),
+                                content: String::from("some content"),
+                            })
                             .stringify(self.buffer.width),
                     );
                 }
@@ -226,6 +353,10 @@ impl crate::state::State {
             self.no_entry_flag = true;
             self.write_no_entries_warning();
         }
+    }
+    pub fn write_command_bar(&mut self) {
+        let str = self.command_bar.stringify(self.buffer.width as u32);
+        self.write_colored_str_at(1, 1, &str, Color::Black, Color::White)
     }
 }
 

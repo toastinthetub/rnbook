@@ -67,14 +67,77 @@ pub enum ModeT {
 
 #[derive(Debug, Clone)]
 pub struct CommandBar {
-    pub mode: String,
+    pub user_buffer: String,
     pub buffer: String,
 }
 
 impl CommandBar {
-    pub fn str(&mut self) -> String {
-        let s = String::new();
-        s
+    pub fn stringify(&mut self, x: u32) -> String {
+        let mut str = String::new();
+        let max_chars = x - 2;
+
+        for (index, character) in self.buffer.char_indices() {
+            if index < max_chars as usize {
+                str.push(character)
+            }
+        }
+
+        while str.len() < max_chars as usize {
+            str.push(' ')
+        }
+
+        str
+    }
+    pub fn push_char(&mut self, c: char) {
+        self.buffer.push(c)
+    }
+    pub fn push_str(&mut self, s: &str) {
+        self.buffer.push_str(s)
+    }
+    pub fn pop_char(&mut self) {
+        self.buffer.pop();
+    }
+    pub fn clear(&mut self) {
+        self.buffer.clear()
+    }
+    pub fn get_buffer_contents(&self) -> String {
+        self.buffer.clone()
+    }
+    /*
+        pub fn push_char_usr(&mut self, c: char) {
+            self.user_buffer.push(c);
+        }
+        pub fn push_str_usr(&mut self, s: &str) {
+            self.user_buffer.push_str(s);
+        }
+        pub fn pop_char_usr(&mut self) {
+            self.user_buffer.pop();
+        }
+        pub fn clear_usr(&mut self) {
+            self.user_buffer.clear();
+        }
+        pub fn get_usr_buffer_contents(&self) -> String {
+            self.user_buffer.clone()
+        }
+        pub fn push_char_sys(&mut self, c: char) {
+            self.buffer.push(c);
+        }
+        pub fn push_str_sys(&mut self, s: &str) {
+            self.buffer.push_str(s);
+        }
+        pub fn pop_char_sys(&mut self) {
+            self.buffer.pop();
+        }
+        pub fn clear_sys(&mut self) {
+            self.buffer.clear();
+        }
+        pub fn get_sys_buffer_contents(&self) -> String {
+            self.buffer.clone()
+        }
+    */
+    /// swaps the two buffers so that we can either be displaying user buf (in command mode) or sys buf which program can write to
+    pub fn swap(&mut self) {
+        std::mem::swap(&mut self.buffer, &mut self.user_buffer);
     }
 }
 

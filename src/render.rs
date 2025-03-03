@@ -7,6 +7,10 @@ use std::io::Write;
 
 impl State {
     pub fn render(&mut self, stdout: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
+        // self.buffer.clear(); // fuck it. i dont even fucking care anymore. fuck you.
+        self.write_command_bar();
+        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
+
         if self.buffer.too_small_flag {
             // log_message("too_small_warning!");
             self.write_too_small_warning();
@@ -22,8 +26,9 @@ impl State {
             // TODO
             return Ok(());
         }
-        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
-        self.write_str_at((self.buffer.width / 2) - 1, self.buffer.height / 2, "X");
+
+        // self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
+        // self.write_str_at((self.buffer.width / 2) - 1, self.buffer.height / 2, "X");
         self.buffer.flush(stdout);
         Ok(())
     }

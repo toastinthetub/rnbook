@@ -3,14 +3,14 @@ use crossterm::{
     event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
     execute,
     style::Color,
-    terminal::{self},
+    terminal::{self, Clear, ClearType},
 };
 
 use crate::{
     config::Config,
     parser::Parser,
     term::DoubleBuffer,
-    util::{log_message, Entry, ModeT, OpenMode},
+    util::{log_message, CommandBar, Entry, ModeT, OpenMode},
 };
 
 use std::{
@@ -23,11 +23,13 @@ use std::{
 pub struct State {
     pub buffer: DoubleBuffer,
     pub mode: ModeT,
+    pub last_mode: ModeT,
     pub config: crate::config::Config,
     pub loaded: Vec<crate::util::Entry>,
     pub string_buffer: Vec<String>,
     pub n_fits: u32,
     pub no_entry_flag: bool,
+    pub command_bar: CommandBar,
 }
 
 impl State {
@@ -37,11 +39,16 @@ impl State {
         Self {
             buffer,
             mode: ModeT::BROWSE,
+            last_mode: ModeT::BROWSE,
             config,
             loaded: Vec::new(),
             string_buffer: Vec::new(),
             n_fits,
             no_entry_flag: true,
+            command_bar: CommandBar {
+                buffer: String::from("test buffer on line 49 of state.rs. see if this hoe swaps"),
+                user_buffer: String::new(),
+            },
         }
     }
 
@@ -50,7 +57,7 @@ impl State {
 
         let parser = Parser;
 
-        let entries = parser.get_entries(&file)?;
+        let entries = parser.get_entries(&file).unwrap_or_default();
 
         self.loaded = entries;
         self.no_entry_flag = self.loaded.is_empty();
@@ -90,6 +97,11 @@ impl State {
         let mut stdout: std::io::Stdout = std::io::stdout();
         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
         let _ = terminal::disable_raw_mode();
+        let _ = execute!(stdout, Clear(ClearType::All)).unwrap();
+    }
+    pub fn quit(&mut self) {
+        self.deconstruct();
+        std::process::exit(0);
     }
 
     pub fn event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
@@ -197,14 +209,36 @@ impl State {
     /// handles **keyboard input**
     fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
         match key_event.code {
-            KeyCode::Esc => return true,
+            KeyCode::Esc => match self.mode {
+                ModeT::COMMAND => {
+                    self.command_bar.swap();
+                    self.mode = self.last_mode.clone();
+                }
+                ModeT::BROWSE => {
+                    return true;
+                }
+                _ => {}
+            },
             KeyCode::Char(c) => {
                 if key_event.modifiers.contains(KeyModifiers::CONTROL) {
                     if c == 'c' {
                         return true; // Exit on CTRL+C
                     }
+                } else if c == ':' && self.mode != ModeT::OPEN(OpenMode::EDIT) {
+                    self.command_bar.swap();
+                    self.mode = ModeT::COMMAND;
                 } else {
                     self.handle_char(c);
+                }
+            }
+            KeyCode::Backspace => {
+                if self.mode == ModeT::COMMAND {
+                    self.command_bar.pop_char();
+                }
+            }
+            KeyCode::Enter => {
+                if self.mode == ModeT::COMMAND {
+                    self.submit_command();
                 }
             }
             _ => {}
@@ -222,7 +256,7 @@ impl State {
     }
 
     /// is passed any raw character presses
-    fn handle_char(&self, c: char) {
+    fn handle_char(&mut self, c: char) {
         match &self.mode {
             ModeT::BROWSE => {}
             ModeT::OPEN(open_mode) => match open_mode {
@@ -233,9 +267,29 @@ impl State {
                     // we should only really be worried about commands
                 }
             },
-            ModeT::COMMAND => {
-                // push to command bar
+            ModeT::COMMAND => self.command_bar.push_char(c),
+        }
+    }
+    fn submit_command(&mut self) {
+        let mut buf = self.command_bar.get_buffer_contents();
+        buf.truncate(2);
+        self.command_bar.clear();
+        self.command_bar.swap();
+        self.mode = self.last_mode.clone();
+        match buf.as_str() {
+            "wq" => {
+                self.command_bar.clear();
+                self.command_bar.push_str("doesnt work yet <sadge :(>")
             }
+            "w" => {
+                self.command_bar.clear();
+                self.command_bar
+                    .push_str("lol. no writing to disk happening here")
+            }
+            "q" => {
+                self.quit();
+            }
+            _ => {}
         }
     }
 }
