@@ -27,18 +27,22 @@ pub struct State {
     pub config: crate::config::Config,
     pub loaded: Vec<crate::util::Entry>,
     pub string_buffer: Vec<String>,
+    pub n_fits: u32,
+    pub no_entry_flag: bool,
 }
 
 impl State {
     pub fn new(buffer: DoubleBuffer) -> Self {
         let config = Config::load().unwrap();
-
+        let n_fits: u32 = (buffer.height - 4) as u32;
         Self {
             buffer,
             mode: ModeT::BROWSE,
             config,
             loaded: Vec::new(),
             string_buffer: Vec::new(),
+            n_fits,
+            no_entry_flag: true,
         }
     }
 
@@ -50,6 +54,7 @@ impl State {
         let entries = parser.get_entries(&file)?;
 
         self.loaded = entries;
+        self.no_entry_flag = self.loaded.is_empty();
 
         Ok(())
     }
@@ -70,6 +75,11 @@ impl State {
 
         self.mode = ModeT::BROWSE;
         self.load_entries()?;
+
+        if !self.loaded.is_empty() {
+            self.no_entry_flag = false;
+        }
+
         self.populate_string_buffer();
 
         Ok(())
@@ -204,6 +214,9 @@ impl State {
     /// handles **resize events**
     fn handle_resize_event(&mut self) {
         self.buffer.resize();
+        self.n_fits = (self.buffer.height - 4) as u32;
+        self.string_buffer.clear();
+        self.populate_string_buffer();
         // crate::util::log_message("resize event, resize() called");
     }
 

@@ -11,7 +11,10 @@ use std::time::{Duration, Instant};
 use crate::constant::*;
 use crate::util::Entry;
 
-const TOO_SMALL_WARNING: &str = "> 60x4";
+use colored::{Color, ColoredString, Colorize};
+
+const TOO_SMALL_WARNING: &str = "> 60x4 TERM SIZE REQUIRED";
+const NO_ENTRIES_WARNING: &str = "< not an entry to be found :) >";
 
 #[derive(Debug, Clone)]
 pub struct DoubleBuffer {
@@ -183,8 +186,36 @@ impl crate::state::State {
             TOO_SMALL_WARNING,
         );
     }
+    pub fn write_no_entries_warning(&mut self) {
+        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
+        self.write_str_at(
+            (self.buffer.width / 2) - (NO_ENTRIES_WARNING.len() / 2),
+            self.buffer.height / 2,
+            NO_ENTRIES_WARNING,
+        );
+    }
     pub fn write_loaded_entries(&mut self) {
-        let n_fits = self.buffer.height - 4;
+        let num_entries = self.loaded.len();
+        let idx: u32 = 2;
+        let max_idx: u32 = self.buffer.height as u32 - 4;
+        if num_entries > 0 {
+            for i in 0..=self.n_fits {
+                if i <= num_entries as u32 && !i > max_idx {
+                    self.write_str_at(
+                        2,
+                        idx as usize,
+                        &self
+                            .loaded
+                            .get(i as usize)
+                            .unwrap()
+                            .stringify(self.buffer.width),
+                    );
+                }
+            }
+        } else {
+            self.no_entry_flag = true;
+            self.write_no_entries_warning();
+        }
     }
 }
 

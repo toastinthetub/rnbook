@@ -21,7 +21,9 @@ impl State {
             // TODO self.write_stuff()
             return Ok(());
         } else if self.mode == ModeT::BROWSE {
-            // TODO self.write_entries()
+            self.write_loaded_entries();
+            self.buffer.flush(stdout);
+            // TODO
             return Ok(());
         }
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
