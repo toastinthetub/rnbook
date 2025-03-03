@@ -2,8 +2,8 @@ use std::{
     error::Error,
     fs::{File, OpenOptions},
     io::{BufRead, BufReader, Write},
-    path::PathBuf
-}
+    path::PathBuf,
+};
 
 use crate::util::Entry;
 

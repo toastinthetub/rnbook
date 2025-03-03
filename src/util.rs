@@ -1,9 +1,6 @@
 use chrono::Local;
 
-use std::{
-    fs::OpenOptions,
-    io::Write
-}
+use std::{fs::OpenOptions, io::Write};
 
 #[derive(Debug, Clone)]
 pub struct Entry {
@@ -15,7 +12,7 @@ pub struct Entry {
 impl Entry {
     pub fn from_str(label: &str) -> Self {
         let label = label.to_string();
-        let date: String = Local::now().format("%Y-%m-%d").to_string();
+        let date: String = Local::now().format("%Y/%m/%d").to_string();
         let content = String::new();
 
         Self {
