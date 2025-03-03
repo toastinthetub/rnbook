@@ -1,6 +1,6 @@
 use chrono::Local;
 
-use std::{fs::OpenOptions, io::Write};
+use std::{fmt, fs::OpenOptions, io::Write};
 
 #[derive(Debug, Clone)]
 pub struct Entry {
@@ -60,7 +60,6 @@ pub enum OpenMode {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModeT {
-    COMMAND,
     BROWSE,
     OPEN(OpenMode),
 }
@@ -149,4 +148,22 @@ pub fn log_message(message: &str) {
         .expect("Failed to open log file");
 
     writeln!(file, "[{}] {}", 'b', message).expect("Failed to write to log file");
+}
+
+impl fmt::Display for ModeT {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ModeT::BROWSE => write!(f, "BROWSE"),
+            ModeT::OPEN(open_mode) => write!(f, "OPEN({})", open_mode),
+        }
+    }
+}
+
+impl fmt::Display for OpenMode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OpenMode::EDIT => write!(f, "EDIT"),
+            OpenMode::READ => write!(f, "READ"),
+        }
+    }
 }

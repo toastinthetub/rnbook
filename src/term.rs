@@ -97,7 +97,6 @@ impl DoubleBuffer {
         }
     }
     pub fn flush(&mut self, stdout: &mut impl Write) {
-        // If the front buffer is empty (e.g. after a resize), force a full redraw
         if self.front_buffer.is_empty() {
             for y in 0..self.height {
                 for x in 0..self.width {
@@ -122,7 +121,6 @@ impl DoubleBuffer {
                 }
             }
         } else {
-            // Use union of keys to ensure that even cells not updated in the back buffer get redrawn if needed
             let all_positions: HashSet<(usize, usize)> = self
                 .front_buffer
                 .keys()
@@ -131,7 +129,6 @@ impl DoubleBuffer {
                 .collect();
 
             for pos in all_positions {
-                // Only consider positions within current bounds
                 if pos.0 >= self.width || pos.1 >= self.height {
                     continue;
                 }
@@ -154,7 +151,6 @@ impl DoubleBuffer {
                     .get(&pos)
                     .unwrap_or(&crossterm::style::Color::Black);
 
-                // Redraw if any aspect has changed
                 if old_char != new_char || old_fg != new_fg || old_bg != new_bg {
                     execute!(
                         stdout,
@@ -168,16 +164,13 @@ impl DoubleBuffer {
             }
         }
 
-        // Reset terminal colors and flush output
         execute!(stdout, ResetColor).unwrap();
         stdout.flush().unwrap();
 
-        // Swap buffers so that the newly drawn frame becomes the "old" frame
         std::mem::swap(&mut self.front_buffer, &mut self.back_buffer);
         std::mem::swap(&mut self.front_fg_buffer, &mut self.back_fg_buffer);
         std::mem::swap(&mut self.front_bg_buffer, &mut self.back_bg_buffer);
 
-        // Clear the back buffers for the next frame
         self.back_buffer.clear();
         self.back_fg_buffer.clear();
         self.back_bg_buffer.clear();
@@ -327,9 +320,11 @@ impl crate::state::State {
             NO_ENTRIES_WARNING,
         );
     }
+
+    // TODO FINISH WRITING AND IMPLEMENT SELECTION
     pub fn write_loaded_entries(&mut self) {
         let num_entries = self.loaded.len();
-        let idx: u32 = 2;
+        let mut idx: u32 = 2;
         let max_idx: u32 = self.buffer.height as u32 - 4;
         if num_entries > 0 {
             for i in 0..=self.n_fits {
@@ -339,7 +334,10 @@ impl crate::state::State {
                         idx as usize,
                         &self
                             .loaded
-                            .get((i as usize).checked_sub(1).unwrap_or(i as usize))
+                            .get(
+                                /*(*/
+                                i as usize, /*).checked_sub(1).unwrap_or(i as usize)*/
+                            )
                             .unwrap_or(&crate::util::Entry {
                                 label: String::from("it didnt work"),
                                 date: String::from("datedate"),
@@ -347,6 +345,7 @@ impl crate::state::State {
                             })
                             .stringify(self.buffer.width),
                     );
+                    idx += 1;
                 }
             }
         } else {
@@ -357,6 +356,47 @@ impl crate::state::State {
     pub fn write_command_bar(&mut self) {
         let str = self.command_bar.stringify(self.buffer.width as u32);
         self.write_colored_str_at(1, 1, &str, Color::Black, Color::White)
+    }
+
+    pub fn write_debug_info(&mut self) {
+        let str_start_x = self.buffer.width - 19;
+        let str_start_y = self.buffer.height - 7;
+
+        self.write_rectangle(
+            self.buffer.width - 20,
+            self.buffer.width - 2,
+            self.buffer.height - 8,
+            self.buffer.height - 2,
+        );
+        self.write_colored_str_at(str_start_x, str_start_y, "DBG!", Color::Red, Color::Black);
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 1,
+            &format!("(h, w): ({}, {})", self.buffer.width, self.buffer.height),
+            Color::Green,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 2,
+            &format!("mode: {}", self.mode),
+            Color::Green,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 3,
+            &format!("cmd: {}", self.command_mode),
+            Color::Green,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 4,
+            &format!("nld: {}", self.loaded.len()),
+            Color::Green,
+            Color::Black,
+        );
     }
 }
 

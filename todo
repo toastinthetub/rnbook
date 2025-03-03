@@ -1,0 +1,10 @@
+ok bro
+
+uhhhh screen isnt diffing correctly i just found out so i guess we should just commit suicide? idfk man
+make sure you're comparing everthing correctly
+
+ok screen diffs correctly now but our command shit needs completely rewritten because you can't have a command mode and any other mode at the same time
+
+struct State {
+	pub command_mode: bool,
+}

@@ -30,6 +30,8 @@ pub struct State {
     pub n_fits: u32,
     pub no_entry_flag: bool,
     pub command_bar: CommandBar,
+    pub command_mode: bool,
+    pub idx: u32,
 }
 
 impl State {
@@ -49,6 +51,8 @@ impl State {
                 buffer: String::from("test buffer on line 49 of state.rs. see if this hoe swaps"),
                 user_buffer: String::new(),
             },
+            command_mode: false,
+            idx: 0,
         }
     }
 
@@ -97,7 +101,7 @@ impl State {
         let mut stdout: std::io::Stdout = std::io::stdout();
         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
         let _ = terminal::disable_raw_mode();
-        let _ = execute!(stdout, Clear(ClearType::All)).unwrap();
+        let _ = execute!(stdout, Clear(ClearType::All));
     }
     pub fn quit(&mut self) {
         self.deconstruct();
@@ -209,16 +213,22 @@ impl State {
     /// handles **keyboard input**
     fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
         match key_event.code {
-            KeyCode::Esc => match self.mode {
-                ModeT::COMMAND => {
+            KeyCode::Esc => {
+                if self.command_mode {
                     self.command_bar.swap();
-                    self.mode = self.last_mode.clone();
+                    self.command_mode = false;
+                } else {
+                    match self.mode {
+                        ModeT::BROWSE => {
+                            return true;
+                        }
+                        ModeT::OPEN(OpenMode::READ) => {
+                            // read
+                        }
+                        _ => {}
+                    }
                 }
-                ModeT::BROWSE => {
-                    return true;
-                }
-                _ => {}
-            },
+            }
             KeyCode::Char(c) => {
                 if key_event.modifiers.contains(KeyModifiers::CONTROL) {
                     if c == 'c' {
@@ -226,18 +236,18 @@ impl State {
                     }
                 } else if c == ':' && self.mode != ModeT::OPEN(OpenMode::EDIT) {
                     self.command_bar.swap();
-                    self.mode = ModeT::COMMAND;
+                    self.command_mode = true;
                 } else {
                     self.handle_char(c);
                 }
             }
             KeyCode::Backspace => {
-                if self.mode == ModeT::COMMAND {
+                if self.command_mode {
                     self.command_bar.pop_char();
                 }
             }
             KeyCode::Enter => {
-                if self.mode == ModeT::COMMAND {
+                if self.command_mode {
                     self.submit_command();
                 }
             }
@@ -257,6 +267,9 @@ impl State {
 
     /// is passed any raw character presses
     fn handle_char(&mut self, c: char) {
+        if self.command_mode {
+            self.command_bar.push_char(c);
+        }
         match &self.mode {
             ModeT::BROWSE => {}
             ModeT::OPEN(open_mode) => match open_mode {
@@ -266,8 +279,8 @@ impl State {
                 OpenMode::READ => {
                     // we should only really be worried about commands
                 }
+                _ => {}
             },
-            ModeT::COMMAND => self.command_bar.push_char(c),
         }
     }
     fn submit_command(&mut self) {
