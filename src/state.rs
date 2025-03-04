@@ -200,16 +200,19 @@ impl State {
 impl State {
     fn handle_event(&mut self) -> bool {
         if event::poll(Duration::from_millis(10)).unwrap() {
-            // crate::util::log_message("event!");
             match event::read().unwrap() {
-                Event::Key(key_event) => return self.handle_key_event(key_event),
+                Event::Key(key_event) => {
+                    if key_event.kind != crossterm::event::KeyEventKind::Press {
+                        return false;
+                    }
+                    return self.handle_key_event(key_event);
+                }
                 Event::Resize(_, _) => self.handle_resize_event(),
                 _ => {} // Ignore mouse events and other stuff
             }
         }
         false
     }
-
     /// handles **keyboard input**
     fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
         match key_event.code {

@@ -21,29 +21,24 @@ impl Entry {
             content,
         }
     }
-    pub fn stringify(&self, x: usize) -> String {
-        let mut str = String::new();
+    pub fn stringify(&self, total_width: usize) -> String {
+        let effective_width = total_width.saturating_sub(2);
 
-        let hunnid = x - 2;
+        let label_width = (effective_width * 80) / 100;
+        let date_width = effective_width - label_width;
 
-        let eighty = (hunnid * 80) / 100;
-        let max_num_label_chars = eighty - 1;
-        let c: Vec<char> = self.label.chars().collect();
+        let truncated_label: String = self.label.chars().take(label_width).collect();
+        let padded_label = format!("{:<width$}", truncated_label, width = label_width);
 
-        for (index, character) in c.iter().enumerate() {
-            if index < max_num_label_chars {
-                str.push(*character)
-            } else {
-                for _ in index..=max_num_label_chars {
-                    str.push(' ')
-                }
-            }
-        }
+        let padded_date = format!("{:<width$}", self.date, width = date_width);
 
-        str.push(crate::constant::VERTICAL_LINE);
-        str.push_str(&self.date);
-        // let str: String = format!("{}{}{}{}", self.label) //{label}{space}{VERT_LINE}{date}{whitespace}{VERT_LINE
-        str
+        format!(
+            "{}{}{}{}",
+            padded_label,
+            crate::constant::VERTICAL_LINE,
+            padded_date,
+            crate::constant::VERTICAL_LINE,
+        )
     }
 }
 
