@@ -32,6 +32,11 @@ pub struct State {
     pub command_bar: CommandBar,
     pub command_mode: bool,
     pub idx: u32,
+    pub idx_active: bool,
+    pub idx_selected: bool,
+    pub active_buffer: String,
+    pub buffer_editable: bool,
+    pub dbg: bool,
 }
 
 impl State {
@@ -48,11 +53,16 @@ impl State {
             n_fits,
             no_entry_flag: true,
             command_bar: CommandBar {
-                buffer: String::from("test buffer on line 49 of state.rs. see if this hoe swaps"),
+                buffer: String::from("test buffer on line 51 of state.rs"),
                 user_buffer: String::new(),
             },
             command_mode: false,
             idx: 0,
+            idx_active: true, // we init this as true coz we start in browse mode
+            idx_selected: false,
+            active_buffer: String::new(),
+            buffer_editable: false,
+            dbg: true,
         }
     }
 
@@ -132,69 +142,6 @@ impl State {
             self.string_buffer.push(entry.stringify(self.buffer.width));
         }
     }
-    /*
-        pub fn event_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-            self.init();
-            let mut stdout = stdout();
-            //    terminal::enable_raw_mode().unwrap();
-            //    execute!(stdout, terminal::Clear(ClearType::All), cursor::Hide).unwrap();
-
-            let mut last_tick = Instant::now();
-            let tick_rate = Duration::from_millis(33); // 30fps = 33ms frametime
-
-            loop {
-                if event::poll(Duration::from_millis(10)).unwrap() {
-                    if let Event::Key(KeyEvent {
-                        code, modifiers, ..
-                    }) = event::read().unwrap()
-                    {
-                        match code {
-                            KeyCode::Esc => break,
-                            KeyCode::Char(c) => {
-                                if modifiers.contains(KeyModifiers::CONTROL) {
-                                    if c == 'c' {
-                                        break; // CONTROL-C BREAK
-                                    } else {
-                                        // DO NOTHING; OTHER CTRL+CHAR
-                                        // handle_modified(c);
-                                    }
-                                } else {
-                                    // handle_char(c);
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-
-                if last_tick.elapsed() >= tick_rate {
-                    last_tick = Instant::now();
-                }
-                self.render(&mut stdout).unwrap();
-            }
-            self.deconstruct();
-            Ok(())
-        }
-
-    pub fn render(&mut self, stdout: &mut impl Write) -> Result<(), Box<dyn std::error::Error>> {
-        if self.buffer.too_small_flag {
-            // log_message("too_small_warning!");
-            self.write_too_small_warning();
-            self.buffer.flush(stdout);
-            return Ok(());
-        }
-        if self.mode == ModeT::OPEN(OpenMode::READ) {
-            // TODO self.write_stuff()
-            return Ok(());
-        } else if self.mode == ModeT::BROWSE {
-            // TODO self.write_entries()
-            return Ok(());
-        }
-        self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1); // draws the border rectangle
-        self.write_str_at((self.buffer.width / 2) - 1, self.buffer.height / 2, "X");
-        self.buffer.flush(stdout);
-        Ok(())
-    } */
 }
 
 impl State {
@@ -216,6 +163,24 @@ impl State {
     /// handles **keyboard input**
     fn handle_key_event(&mut self, key_event: KeyEvent) -> bool {
         match key_event.code {
+            KeyCode::Down => {
+                if self.idx_active {
+                    self.idx += 1;
+                    if self.idx >= self.loaded.len() as u32 {
+                        self.idx = 0
+                    } else {
+                    };
+                }
+            }
+            KeyCode::Up => {
+                if self.idx_active {
+                    if self.idx <= 0 {
+                        self.idx = self.loaded.len() as u32 - 1;
+                    } else {
+                        self.idx -= 1;
+                    }
+                }
+            }
             KeyCode::Esc => {
                 if self.command_mode {
                     self.command_bar.swap();
@@ -291,7 +256,6 @@ impl State {
         buf.truncate(2);
         self.command_bar.clear();
         self.command_bar.swap();
-        self.mode = self.last_mode.clone();
         match buf.as_str() {
             "wq" => {
                 self.command_bar.clear();
@@ -307,5 +271,6 @@ impl State {
             }
             _ => {}
         }
+        self.command_mode = false;
     }
 }

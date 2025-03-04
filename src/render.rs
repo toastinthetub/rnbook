@@ -35,7 +35,9 @@ impl State {
     pub fn defaults(&mut self) {
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
         self.write_command_bar();
-        self.write_debug_info();
+        if self.dbg {
+            self.write_debug_info()
+        }
         // draws the border rectangle
     }
 }

@@ -254,9 +254,35 @@ impl crate::state::State {
         }
     }
 
+    pub fn write_colored_line_horizontal(
+        &mut self,
+        x_0: usize,
+        x: usize,
+        y: usize,
+        fg: Color,
+        bg: Color,
+    ) {
+        for i in x_0..=x {
+            self.buffer.write_colored(i, y, HORIZONTAL_LINE, fg, bg);
+        }
+    }
+
     pub fn write_line_vertical(&mut self, x: usize, y_0: usize, y: usize) {
         for i in y_0..=y {
             self.buffer.write(x, i, VERTICAL_LINE)
+        }
+    }
+
+    pub fn write_colored_line_vertical(
+        &mut self,
+        x: usize,
+        y_0: usize,
+        y: usize,
+        fg: Color,
+        bg: Color,
+    ) {
+        for i in y_0..=y {
+            self.buffer.write_colored(x, i, VERTICAL_LINE, fg, bg)
         }
     }
 
@@ -270,17 +296,30 @@ impl crate::state::State {
         self.write_line_horizontal(x_0 + 1, x - 1, y);
         self.write_line_vertical(x_0, y_0 + 1, y - 1);
         self.write_line_vertical(x, y_0 + 1, y - 1);
+    }
 
-        /* for i in (x_0 + 1)..=(x - 1) {
-            // i actually made a function that does this ig
-            self.buffer.write(i, y_0, HORIZONTAL_LINE);
-            self.buffer.write(i, y, HORIZONTAL_LINE);
-        }
-        for i in (y_0 + 1)..=(y - 1) {
-            self.buffer.write(x_0, i, VERTICAL_LINE);
-            self.buffer.write(x, i, VERTICAL_LINE);
-        }
-        */
+    pub fn write_colored_rectangle(
+        &mut self,
+        x_0: usize,
+        x: usize,
+        y_0: usize,
+        y: usize,
+        fg: Color,
+        bg: Color,
+    ) {
+        self.buffer
+            .write_colored(x_0, y_0, LEFT_UPPER_SHOULDER, fg, bg);
+        self.buffer
+            .write_colored(x, y_0, RIGHT_UPPER_SHOULDER, fg, bg);
+        self.buffer
+            .write_colored(x_0, y, LEFT_LOWER_SHOULDER, fg, bg);
+        self.buffer
+            .write_colored(x, y, RIGHT_LOWER_SHOULDER, fg, bg);
+
+        self.write_colored_line_horizontal(x_0 + 1, x - 1, y_0, fg, bg);
+        self.write_colored_line_horizontal(x_0 + 1, x - 1, y, fg, bg);
+        self.write_colored_line_vertical(x_0, y_0 + 1, y - 1, fg, bg);
+        self.write_colored_line_vertical(x, y_0 + 1, y - 1, fg, bg);
     }
     pub fn write_char_horizontal(&mut self, x_0: usize, x: usize, y: usize, ch: char) {
         for i in x_0..=x {
@@ -322,29 +361,31 @@ impl crate::state::State {
     }
 
     // TODO FINISH WRITING AND IMPLEMENT SELECTION
+
     pub fn write_loaded_entries(&mut self) {
         let num_entries = self.loaded.len();
-        let mut idx: u32 = 2;
+        let mut idx: u32 = 0;
         let max_idx: u32 = self.buffer.height as u32 - 4;
+
         if num_entries > 0 {
-            for i in 0..=self.n_fits {
-                if i < num_entries as u32 && i <= max_idx {
-                    self.write_str_at(
-                        2,
-                        idx as usize,
-                        &self
-                            .loaded
-                            .get(
-                                /*(*/
-                                i as usize, /*).checked_sub(1).unwrap_or(i as usize)*/
-                            )
-                            .unwrap_or(&crate::util::Entry {
-                                label: String::from("it didnt work"),
-                                date: String::from("datedate"),
-                                content: String::from("some content"),
-                            })
-                            .stringify(self.buffer.width),
-                    );
+            for i in 0..=std::cmp::min(self.n_fits, num_entries as u32) - 1 {
+                if i < max_idx {
+                    let default_entry = crate::util::Entry {
+                        label: String::from("it didnt work"),
+                        date: String::from("datedate"),
+                        content: String::from("some content"),
+                    };
+
+                    let entry = self.loaded.get(i as usize).unwrap_or(&default_entry);
+
+                    let entry_string = if idx == self.idx {
+                        format!("> {}", entry.stringify(self.buffer.width))
+                    } else {
+                        entry.stringify(self.buffer.width)
+                    };
+
+                    self.write_str_at(2, idx as usize + 2, &entry_string);
+
                     idx += 1;
                 }
             }
@@ -360,19 +401,21 @@ impl crate::state::State {
 
     pub fn write_debug_info(&mut self) {
         let str_start_x = self.buffer.width - 19;
-        let str_start_y = self.buffer.height - 7;
+        let str_start_y = self.buffer.height - 11;
 
-        self.write_rectangle(
+        self.write_colored_rectangle(
             self.buffer.width - 20,
             self.buffer.width - 2,
-            self.buffer.height - 8,
+            self.buffer.height - 12,
             self.buffer.height - 2,
+            Color::Yellow,
+            Color::Black,
         );
         self.write_colored_str_at(str_start_x, str_start_y, "DBG!", Color::Red, Color::Black);
         self.write_colored_str_at(
             str_start_x,
             str_start_y + 1,
-            &format!("(h, w): ({}, {})", self.buffer.width, self.buffer.height),
+            &format!("(w, h): ({}, {})", self.buffer.width, self.buffer.height),
             Color::Green,
             Color::Black,
         );
@@ -394,6 +437,39 @@ impl crate::state::State {
             str_start_x,
             str_start_y + 4,
             &format!("nld: {}", self.loaded.len()),
+            Color::Green,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 5,
+            &format!("idx: {}", self.idx),
+            Color::Green,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 6,
+            &format!("dxa: {}", self.idx_active),
+            Color::Green,
+            Color::Black,
+        );
+
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 7,
+            &format!(
+                "bn6: {}",
+                self.active_buffer.chars().take(6).collect::<String>()
+            ),
+            Color::Green,
+            Color::Black,
+        );
+
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 8,
+            &format!("bed: {}", self.buffer_editable),
             Color::Green,
             Color::Black,
         );
