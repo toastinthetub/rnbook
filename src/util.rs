@@ -25,7 +25,26 @@ impl Entry {
         let effective_width = total_width.saturating_sub(2);
 
         let label_width = (effective_width * 80) / 100;
-        let date_width = effective_width - label_width;
+        let date_width = effective_width - label_width - 2;
+
+        let truncated_label: String = self.label.chars().take(label_width).collect();
+        let padded_label = format!("{:<width$}", truncated_label, width = label_width);
+
+        let padded_date = format!("{:<width$}", self.date, width = date_width);
+
+        format!(
+            "{}{}{}{}",
+            padded_label,
+            crate::constant::VERTICAL_LINE,
+            padded_date,
+            crate::constant::VERTICAL_LINE,
+        )
+    }
+    pub fn selected_stringify(&self, total_width: usize) -> String {
+        let effective_width = total_width.saturating_sub(2);
+
+        let label_width = ((effective_width * 80) / 100) - 2;
+        let date_width = effective_width - label_width - 2;
 
         let truncated_label: String = self.label.chars().take(label_width).collect();
         let padded_label = format!("{:<width$}", truncated_label, width = label_width);

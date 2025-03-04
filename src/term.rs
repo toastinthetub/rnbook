@@ -327,6 +327,8 @@ impl crate::state::State {
         }
     }
 
+    // i dont think either of the above or below methods r ever getting used ever.
+
     pub fn write_char_vertical(&mut self, x: usize, y_0: usize, y: usize, ch: char) {
         for i in y_0..=y {
             self.buffer.write(x, i, ch)
@@ -374,18 +376,25 @@ impl crate::state::State {
                         label: String::from("it didnt work"),
                         date: String::from("datedate"),
                         content: String::from("some content"),
-                    };
+                    }; // TODO do something about this abomination
 
                     let entry = self.loaded.get(i as usize).unwrap_or(&default_entry);
 
                     let entry_string = if idx == self.idx {
-                        format!("> {}", entry.stringify(self.buffer.width))
+                        format!("> {}", entry.selected_stringify(self.buffer.width))
                     } else {
                         entry.stringify(self.buffer.width)
                     };
 
                     self.write_str_at(2, idx as usize + 2, &entry_string);
-
+                    self.buffer.write_colored(
+                        self.buffer.width - 1,
+                        idx as usize + 2,
+                        VERTICAL_LINE,
+                        Color::White,
+                        Color::Black,
+                    ); // dirty fucking hackc but should work
+                       // lol it worked
                     idx += 1;
                 }
             }
