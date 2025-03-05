@@ -41,20 +41,29 @@ use crate::util::{
 #[derive(Debug, Clone)]
 pub struct State {
     pub buffer: DoubleBuffer,
+
     pub mode: ModeT,
     pub last_mode: ModeT,
+
     pub config: Config,
-    pub string_buffer: Vec<String>,
+    pub string_buffer: Vec<String>, // this is a buffer of owned strings that we use to draw all the entries to the screen in the main menu
+
     pub n_fits: u32,
     pub no_entry_flag: bool,
+
     pub entries_map: HashMap<String, Entry>, // mapping from entry ID to Entry
     pub master_index: MasterIndex,           // the master index (which gives ordering)
+
     pub command_bar: CommandBar,
     pub command_mode: bool,
+
     pub idx: usize,       // selected index (based on master_index.entries order)
     pub idx_active: bool, // true if there are entries
-    pub active_buffer: String,
+
+    pub active_buffer: String, // theoretically this is the String buffer to be written to the current_entry on :w
+    // pub active_buffer_lines: Vec<String>,
     pub buffer_editable: bool,
+
     pub dbg: bool,
 
     pub current_entry: Option<Entry>, // entry being edited (if any)
@@ -66,7 +75,7 @@ impl State {
         let config = Config::load().unwrap_or_default();
         let n_fits: u32 = (buffer.height - 4) as u32;
         fs::create_dir_all(&config.entries_path)
-            .expect("Failed to create entries directory specified in config");
+            .expect("failed to create entries directory specified in config");
         Self {
             buffer,
             mode: ModeT::BROWSE,
@@ -126,7 +135,6 @@ impl State {
         let _ = execute!(stdout, Clear(ClearType::All));
     }
 
-    /// Example quit method.
     pub fn quit(&mut self) {
         self.deconstruct();
         std::process::exit(0);

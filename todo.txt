@@ -1,0 +1,1 @@
+fix the commander and implement some real parsing stuff

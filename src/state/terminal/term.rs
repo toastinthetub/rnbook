@@ -213,6 +213,29 @@ impl crate::state::state::State {
         }
     }
 
+    pub fn write_string_buffer(&mut self) {
+        let effective_width = self.buffer.width - 2;
+        let x_0 = 2;
+        let x = self.buffer.width - 2;
+        let y_0 = 2;
+        let y = self.buffer.height - 2;
+
+        let s = String::new();
+
+        if !self.string_buffer.is_empty() { /*
+             let mut lines: Vec<&str> = self.active_buffer.lines().collect();
+             for (i, line) in lines.iter_mut().enumerate() {
+                 if line.len() >= effective_width {
+                     let split: (&str, &str) = line.split_at(effective_width - 1);
+                     let editable_line = lines.get_mut(i + 1).unwrap_or({
+                         &mut s.as_str()
+                     })
+                 }
+
+             } */
+        }
+    }
+
     pub fn write_debug_info(&mut self) {
         let str_start_x = self.buffer.width - 19;
         let str_start_y = self.buffer.height - 11;

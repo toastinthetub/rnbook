@@ -22,7 +22,7 @@
 // src/util/command.rs
 use std::str::FromStr;
 
-use crate::state::state::State;
+use crate::{state::state::State, util::util::log_message};
 
 /// Unique identifier for an entry (using the id from Entry).
 pub type EntryId = String;
@@ -85,24 +85,25 @@ impl Commander {
             }
             Command::DeleteEntry(id) => {
                 if let Err(e) = state.delete_entry(&id) {
-                    eprintln!("error deleting entry: {}", e);
+                    log_message(&format!("failed to delete entry: {}", e));
                 }
             }
             Command::Save => {
                 if let Err(e) = state.save_current_entry() {
-                    eprintln!("error saving entry: {}", e);
+                    log_message(&format!("failed to save entry: {}", e));
                 }
             }
             Command::Quit => {
-                // Optionally warn if there are unsaved changes.
+                // TODO warn of unsaved changes
+                log_message("quit command run");
                 state.quit();
             }
             Command::QuitForce => {
+                // TODO fix state.quit()
+                log_message("quitforce command run");
                 state.quit();
             }
-            Command::Invalid(s) => {
-                eprintln!("unrecognized command: {}", s);
-            }
+            Command::Invalid(s) => log_message(&format!("unrecognized command: {}", s)),
         }
     }
 }

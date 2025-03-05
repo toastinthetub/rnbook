@@ -110,6 +110,9 @@ impl state::state::State {
             date: current_date,
             file,
         };
+        self.current_entry = Some(new_entry.clone());
+        self.current_entry_meta = Some(meta.clone());
+        self.buffer_editable = true;
         self.entries_map.insert(new_entry.id.clone(), new_entry);
         self.master_index.entries.push(meta);
     }

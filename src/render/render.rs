@@ -38,9 +38,11 @@ impl State {
             self.defaults();
             self.buffer.flush(stdout);
             return Ok(());
+        } else if self.mode == ModeT::OPEN(OpenMode::EDIT) {
+            // write the window and the buffer
         } else if self.mode == ModeT::BROWSE {
-            self.defaults();
             self.write_loaded_entries();
+            self.defaults();
             self.buffer.flush(stdout);
             // TODO
             return Ok(());

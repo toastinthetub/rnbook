@@ -77,7 +77,7 @@ impl State {
             KeyCode::Down => {
                 if self.idx_active {
                     self.idx += 1;
-                    if self.idx >= self.entries_map.len() as usize {
+                    if self.idx >= self.entries_map.len() {
                         self.idx = 0
                     } /* else {
                       }; */
@@ -86,9 +86,9 @@ impl State {
             KeyCode::Up => {
                 if self.idx_active {
                     if self.idx == 0 {
-                        self.idx = (self.entries_map.len() as usize)
+                        self.idx = (self.entries_map.len())
                             .checked_sub(1)
-                            .unwrap_or(self.entries_map.len() as usize);
+                            .unwrap_or(self.entries_map.len());
                     } else {
                         self.idx -= 1;
                     }
@@ -159,8 +159,7 @@ impl State {
                 }
                 OpenMode::READ => {
                     // we should only really be worried about commands
-                }
-                _ => {}
+                } //_ => {}
             },
         }
     }
