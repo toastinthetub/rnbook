@@ -6,6 +6,9 @@ use std::{
     path::PathBuf,
 };
 
+pub const ENTRIES_DIR: &str = "entries";
+pub const MASTER_INDEX_FILE: &str = "rnbook_master_list.json";
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub entries_file: PathBuf,

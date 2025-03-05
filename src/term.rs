@@ -364,7 +364,7 @@ impl crate::state::State {
 
     // TODO FINISH WRITING AND IMPLEMENT SELECTION
 
-    pub fn write_loaded_entries(&mut self) {
+    /* pub fn write_loaded_entries(&mut self) {
         let num_entries = self.loaded.len();
         let mut idx: u32 = 0;
         let max_idx: u32 = self.buffer.height as u32 - 4;
@@ -376,6 +376,8 @@ impl crate::state::State {
                         label: String::from("it didnt work"),
                         date: String::from("datedate"),
                         content: String::from("some content"),
+                        id: String::from("abcd123"),
+                        is_dirty: false,
                     }; // TODO do something about this abomination
 
                     let entry = self.loaded.get(i as usize).unwrap_or(&default_entry);
@@ -392,8 +394,7 @@ impl crate::state::State {
                         idx as usize + 2,
                         VERTICAL_LINE,
                         Color::White,
-                        Color::Black,
-                    ); // dirty fucking hackc but should work
+                        Color::Black,                   ); // dirty fucking hackc but should work
                        // lol it worked
                     idx += 1;
                 }
@@ -402,10 +403,32 @@ impl crate::state::State {
             self.no_entry_flag = true;
             self.write_no_entries_warning();
         }
-    }
+    }*/
     pub fn write_command_bar(&mut self) {
         let str = self.command_bar.stringify(self.buffer.width as u32);
         self.write_colored_str_at(1, 1, &str, Color::Black, Color::White)
+    }
+
+    pub fn write_command_window(&mut self) {
+        let str = self.command_bar.stringify(self.buffer.width as u32 / 2);
+        // this should be buffered
+        let n = str.len();
+        let effective_width = n + 2; // one on each side
+        self.write_colored_rectangle(
+            (self.buffer.width / 2) - (effective_width / 2),
+            (self.buffer.width / 2) + (effective_width / 2),
+            (self.buffer.height / 2) - 1,
+            (self.buffer.height / 2) + 1,
+            Color::Cyan,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            (self.buffer.width / 2) - (effective_width / 2) + 1,
+            self.buffer.height / 2,
+            &str,
+            Color::Green,
+            Color::Black,
+        );
     }
 
     pub fn write_debug_info(&mut self) {

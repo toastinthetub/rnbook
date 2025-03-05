@@ -1,7 +1,7 @@
 mod command;
 mod config;
 mod constant;
-mod parser;
+mod db;
 mod render;
 mod state;
 mod term;

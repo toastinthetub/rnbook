@@ -7,23 +7,23 @@ use crossterm::{
 };
 
 use crate::{
-    config::Config,
-    parser::Parser,
+    config::{Config, ENTRIES_DIR, MASTER_INDEX_FILE},
     term::DoubleBuffer,
-    util::{log_message, CommandBar, Entry, ModeT, OpenMode},
+    util::{log_message, CommandBar, Entry, EntryMeta, MasterIndex, ModeT, OpenMode},
 };
 
 use std::{
-    fs::{File, OpenOptions},
+    collections::HashMap,
+    fs::{self, File, OpenOptions},
     io::{stdout, BufRead, BufReader, Write},
     time::{Duration, Instant},
 };
 
-#[derive(Debug, Clone)]
+/*#[derive(Debug, Clone)]
 pub struct State {
     pub buffer: DoubleBuffer,
     pub mode: ModeT,
-    pub last_mode: ModeT,
+    pub last_mode: ModeT, // i will likely have a use for this
     pub config: crate::config::Config,
     pub loaded: Vec<crate::util::Entry>,
     pub string_buffer: Vec<String>,
@@ -33,14 +33,39 @@ pub struct State {
     pub command_mode: bool,
     pub idx: u32,
     pub idx_active: bool,
-    pub idx_selected: bool,
+    pub idx_selected: bool, // this may or may not go
     pub active_buffer: String,
     pub buffer_editable: bool,
     pub dbg: bool,
+}*/
+
+#[derive(Debug, Clone)]
+pub struct State {
+    pub buffer: DoubleBuffer,
+    pub mode: ModeT,
+    pub last_mode: ModeT, // i will likely have a use for this
+    pub config: crate::config::Config,
+    pub loaded: Vec<crate::util::Entry>, // still used for listing entries
+    pub string_buffer: Vec<String>,
+    pub n_fits: u32,
+    pub no_entry_flag: bool,
+    pub command_bar: CommandBar,
+    pub command_mode: bool,
+    pub idx: u32,
+    pub idx_active: bool,
+    pub idx_selected: bool, // this may or may not go
+    pub active_buffer: String,
+    pub buffer_editable: bool,
+    pub dbg: bool,
+
+    pub master_index: MasterIndex,             // in-memory master index
+    pub entries_map: HashMap<String, Entry>, // mapping from entry ID to full Entry (for quick lookup)
+    pub current_entry: Option<Entry>,        // entry being edited (if any)
+    pub current_entry_meta: Option<EntryMeta>, // corresponding metadata for the entry in edit mode
 }
 
 impl State {
-    pub fn new(buffer: DoubleBuffer) -> Self {
+    /*pub fn new(buffer: DoubleBuffer) -> Self {
         let config = Config::load().unwrap();
         let n_fits: u32 = (buffer.height - 4) as u32;
         Self {
@@ -64,9 +89,44 @@ impl State {
             buffer_editable: false,
             dbg: true,
         }
+    }*/
+
+    pub fn new(buffer: DoubleBuffer) -> Self {
+        let config = crate::config::Config::load().unwrap();
+        let n_fits: u32 = (buffer.height - 4) as u32;
+        // Ensure the entries directory exists
+        fs::create_dir_all(ENTRIES_DIR).expect("Failed to create entries directory");
+
+        Self {
+            buffer,
+            mode: ModeT::BROWSE,
+            last_mode: ModeT::BROWSE,
+            config,
+            loaded: Vec::new(),
+            string_buffer: Vec::new(),
+            n_fits,
+            no_entry_flag: true,
+            command_bar: CommandBar {
+                buffer: String::from("test buffer on line 51 of state.rs"),
+                user_buffer: String::new(),
+            },
+            command_mode: false,
+            idx: 0,
+            idx_active: true, // we init this as true coz we start in browse mode
+            idx_selected: false,
+            active_buffer: String::new(),
+            buffer_editable: false,
+            dbg: true,
+
+            // New fields initialization:
+            master_index: MasterIndex::default(),
+            entries_map: HashMap::new(),
+            current_entry: None,
+            current_entry_meta: None,
+        }
     }
 
-    pub fn load_entries(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    /* pub fn load_entries(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file = self.config.entries_file.clone();
 
         let parser = Parser;
@@ -79,12 +139,14 @@ impl State {
         Ok(())
     }
 
+    // TODO i dont evne know if this works
     pub fn push_entry(&mut self, entry: Entry) -> Result<(), Box<dyn std::error::Error>> {
         let parser = Parser;
         parser.add_entry(&self.config.entries_file, &entry)?;
         Ok(())
-    }
+    } */
 
+    // TODO this needs changed
     pub fn init(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut stdout = std::io::stdout();
         let _ = execute!(stdout, terminal::EnterAlternateScreen);
@@ -94,7 +156,7 @@ impl State {
         let _ = terminal::enable_raw_mode();
 
         self.mode = ModeT::BROWSE;
-        self.load_entries()?;
+        self.load_all_entries()?;
 
         if !self.loaded.is_empty() {
             self.no_entry_flag = false;
@@ -107,12 +169,15 @@ impl State {
         Ok(())
     }
 
+    // TODO something else about this
     pub fn deconstruct(&mut self) {
         let mut stdout: std::io::Stdout = std::io::stdout();
         let _ = execute!(stdout, terminal::LeaveAlternateScreen);
         let _ = terminal::disable_raw_mode();
         let _ = execute!(stdout, Clear(ClearType::All));
     }
+
+    // TODO this is so stupid, clean up
     pub fn quit(&mut self) {
         self.deconstruct();
         std::process::exit(0);
@@ -137,6 +202,10 @@ impl State {
         self.deconstruct();
         Ok(())
     }
+
+    /// this gets called on resize() because we have to recompute all of the string
+    /// to comply with the new terminal size. at least we aren't recomputing all that
+    /// shit every frame.
     pub fn populate_string_buffer(&mut self) {
         for entry in self.loaded.iter() {
             self.string_buffer.push(entry.stringify(self.buffer.width));
@@ -150,12 +219,13 @@ impl State {
             match event::read().unwrap() {
                 Event::Key(key_event) => {
                     if key_event.kind != crossterm::event::KeyEventKind::Press {
+                        // stupid windows bug
                         return false;
                     }
                     return self.handle_key_event(key_event);
                 }
                 Event::Resize(_, _) => self.handle_resize_event(),
-                _ => {} // Ignore mouse events and other stuff
+                _ => {} // ignore mouse events and other stuff in the spirit
             }
         }
         false
@@ -168,14 +238,16 @@ impl State {
                     self.idx += 1;
                     if self.idx >= self.loaded.len() as u32 {
                         self.idx = 0
-                    } else {
-                    };
+                    } /* else {
+                      }; */
                 }
             }
             KeyCode::Up => {
                 if self.idx_active {
-                    if self.idx <= 0 {
-                        self.idx = self.loaded.len() as u32 - 1;
+                    if self.idx == 0 {
+                        self.idx = (self.loaded.len() as u32)
+                            .checked_sub(1)
+                            .unwrap_or(self.loaded.len() as u32);
                     } else {
                         self.idx -= 1;
                     }
@@ -200,7 +272,7 @@ impl State {
             KeyCode::Char(c) => {
                 if key_event.modifiers.contains(KeyModifiers::CONTROL) {
                     if c == 'c' {
-                        return true; // Exit on CTRL+C
+                        return true; // exit on CTRL+C
                     }
                 } else if c == ':' && self.mode != ModeT::OPEN(OpenMode::EDIT) {
                     self.command_bar.swap();

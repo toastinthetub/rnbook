@@ -34,8 +34,14 @@ impl State {
     }
     pub fn defaults(&mut self) {
         self.write_rectangle(0, self.buffer.width - 1, 0, self.buffer.height - 1);
-        self.write_command_bar();
-        if self.dbg {
+
+        if !self.buffer.too_small_flag {
+            self.write_command_bar(); // the command bar will soon be slaughtered
+        }
+        if self.command_mode && !self.buffer.too_small_flag {
+            self.write_command_window();
+        }
+        if self.dbg && !self.buffer.too_small_flag {
             self.write_debug_info()
         }
         // draws the border rectangle

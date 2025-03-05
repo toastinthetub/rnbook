@@ -1,26 +1,18 @@
 use chrono::Local;
-
+use serde::{Deserialize, Serialize};
 use std::{fmt, fs::OpenOptions, io::Write};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Entry {
+    pub id: String,
     pub label: String,
-    pub date: String, // this shouldnt be a string its going to bite me later
+    pub date: String,
     pub content: String,
+    #[serde(skip)]
+    pub is_dirty: bool, // runtime flag, not serialized
 }
 
 impl Entry {
-    pub fn from_str(label: &str) -> Self {
-        let label = label.to_string();
-        let date: String = Local::now().format("%Y/%m/%d").to_string();
-        let content = String::new();
-
-        Self {
-            label,
-            date,
-            content,
-        }
-    }
     pub fn stringify(&self, total_width: usize) -> String {
         let effective_width = total_width.saturating_sub(2);
 
@@ -161,7 +153,7 @@ pub fn log_message(message: &str) {
         .open("app.log")
         .expect("Failed to open log file");
 
-    writeln!(file, "[{}] {}", 'b', message).expect("Failed to write to log file");
+    writeln!(file, "[b] {}", message).expect("Failed to write to log file");
 }
 
 impl fmt::Display for ModeT {
@@ -180,4 +172,17 @@ impl fmt::Display for OpenMode {
             OpenMode::READ => write!(f, "READ"),
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct EntryMeta {
+    pub id: String,
+    pub label: String,
+    pub date: String,
+    pub file: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct MasterIndex {
+    pub entries: Vec<EntryMeta>,
 }
