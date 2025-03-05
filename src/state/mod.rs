@@ -18,6 +18,7 @@
  */
 
 pub mod db;
+pub mod editor;
 pub mod event;
 pub mod helper;
 pub mod state;
