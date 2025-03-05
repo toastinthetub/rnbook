@@ -1,3 +1,25 @@
+/*
+ * src/util/command.rs
+ *
+ * This file is part of rnbook.
+ *
+ * rnbook is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * rnbook is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with rnbook. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/// NOTE! This file is largely untouched and incomplete, eventually this will control how we call methods on State
+/// and by parsing commands we can do things like state.write_loaded_entry_to_disk()
+
 pub struct Commander {}
 
 // no command is to have more than 2 arguments
@@ -8,16 +30,9 @@ pub enum Command {
     New(CommandArgument),
     Shred,
     Delete,
-    NULL, // this will die soon
+    NULL,
 }
 
-/*
-we should only ever be changing 1 entry at a time. we store all loaded entries in 1 spot in memory and we can just flush the
-*/
-
-pub struct CallQueue {}
-
-// TODO FINISH THIS
 impl Command {
     pub fn from_str(s: String) -> Option<Self> {
         let tokens: Vec<char> = s.clone().chars().collect();
@@ -63,20 +78,11 @@ impl Command {
     }
 }
 
-/* notes
-
-i can store string buf from command in state, i can store current index (which SHOULD be the selected entry if my math is right)
-and then we can take the string buf and run it through Command::from_str() at which point we can generate a commmand with an exectuable queue
-
-maybe it doesnt even need to be that complicated. we need
-
-*/
-
 #[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub enum CommandArgument {
     Path(String),
     Name(String),
-    Entry(crate::util::Entry),
+    Entry(crate::util::util::Entry),
 }
 
 pub struct CommandParser {}

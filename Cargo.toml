@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4.39"
-colored = "3.0.0"
 crossterm = "0.28.1"
 dirs = "6.0.0"
 serde = {version = "1.0.218", features = ["derive"] } 
@@ -13,4 +12,8 @@ serde_json = { version = "1.0.139" }
 uuid = { version = "1", features = ["v4"] }
 
 [profile.release]
-debug = true
+# debug = true
+opt-level = 3        
+lto = true            # enable linktime opts
+codegen-units = 1     
+panic = "abort" 

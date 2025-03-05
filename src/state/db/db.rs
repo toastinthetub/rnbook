@@ -1,20 +1,37 @@
+/*
+ * src/state/db/db.rs
+ *
+ * This file is part of rnbook.
+ *
+ * rnbook is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * rnbook is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with rnbook. If not, see <https://www.gnu.org/licenses/>.
+ */
+
 use crate::{
-    config::{self, Config, ENTRIES_DIR, MASTER_INDEX_FILE},
-    util::{log_message, CommandBar, Entry, EntryMeta, MasterIndex, ModeT, OpenMode},
+    state::{self, state::State},
+    util::config::{self, ENTRIES_DIR, MASTER_INDEX_FILE},
+    util::util::{Entry, EntryMeta, MasterIndex},
 };
 
 use serde_json;
 use std::{
-    collections::HashMap,
-    fs::{self, File, OpenOptions},
-    io::{stdout, BufRead, BufReader, Write},
+    fs::{self, File},
     path::Path,
-    time::{Duration, Instant},
 };
 use uuid::Uuid;
 
-impl crate::state::State {
-    /// Load the master index from disk (or create an empty one if not present)
+impl state::state::State {
+    /// load the master index from disk (or create an empty one if not present)
     pub fn load_master_index(&mut self) -> std::io::Result<()> {
         if Path::new(MASTER_INDEX_FILE).exists() {
             let data = fs::read_to_string(MASTER_INDEX_FILE)?;
@@ -26,15 +43,15 @@ impl crate::state::State {
         Ok(())
     }
 
-    /// Save the master index to disk
+    /// save the master index to disk
     pub fn save_master_index(&self) -> std::io::Result<()> {
         let file = File::create(MASTER_INDEX_FILE)?;
         serde_json::to_writer_pretty(file, &self.master_index)?;
         Ok(())
     }
 
-    /// Load all entries from disk into the in-memory mapping.
-    /// This uses the master index to locate and deserialize each entry.
+    /// load all entries from disk into the in-memory mapping.
+    /// this uses the master index to locate and deserialize each entry.
     pub fn load_all_entries(&mut self) -> std::io::Result<()> {
         self.load_master_index()?;
         self.loaded.clear();
@@ -53,13 +70,13 @@ impl crate::state::State {
         Ok(())
     }
 
-    /// Add a new entry in memory (modification stays unsaved until :w is executed)
+    /// add a new entry in memory (modification stays unsaved until :w is executed)
     pub fn add_entry(&mut self, label: &str) {
         // Generate a UUID for the new entry
         let new_id = Uuid::new_v4().to_string();
         let current_date = chrono::Local::now().format("%Y/%m/%d").to_string();
 
-        // Create the new entry; start with empty content.
+        // create the new entry; start with empty content.
         let new_entry = Entry {
             id: new_id.clone(),
             label: label.to_string(),
@@ -68,41 +85,35 @@ impl crate::state::State {
             is_dirty: true, // mark as unsaved
         };
 
-        // Create corresponding metadata
         let meta = EntryMeta {
             id: new_id,
             label: label.to_string(),
             date: current_date,
-            file: format!("entry_{}.json", Uuid::new_v4().simple()), // new file name using UUID
+            file: format!("entry_{}.json", Uuid::new_v4().simple()),
         };
 
-        // Update in-memory data structures
         self.loaded.push(new_entry.clone());
         self.entries_map.insert(new_entry.id.clone(), new_entry);
         self.master_index.entries.push(meta);
     }
 
-    /// Save the currently edited entry to disk (triggered by :w)
     pub fn save_current_entry(&mut self) -> std::io::Result<()> {
         if let (Some(current), Some(meta)) = (&mut self.current_entry, &mut self.current_entry_meta)
         {
-            // Construct the file path from config and meta.file
             let file_path = Path::new(config::ENTRIES_DIR).join(&meta.file);
             let file = File::create(&file_path)?;
             serde_json::to_writer_pretty(file, current)?;
             current.is_dirty = false;
 
-            // Update metadata if necessary (e.g., label may have changed)
             meta.label = current.label.clone();
             meta.date = current.date.clone();
 
-            // Update master index on disk
             self.save_master_index()?;
         }
         Ok(())
     }
 
-    /// Delete an entry immediately from disk and in-memory.
+    /// delete an entry immediately from disk and in-memory.
     /// `entry_id` is the UUID of the entry to delete.
     pub fn delete_entry(&mut self, entry_id: &str) -> std::io::Result<()> {
         if let Some(pos) = self
@@ -113,18 +124,16 @@ impl crate::state::State {
         {
             let meta = &self.master_index.entries[pos];
             let file_path = Path::new(config::ENTRIES_DIR).join(&meta.file);
-            // Remove file from disk (if it exists)
+
             if file_path.exists() {
                 fs::remove_file(&file_path)?;
             }
-            // Remove from master index
+
             self.master_index.entries.remove(pos);
             self.save_master_index()?;
 
-            // Remove from in-memory collections
             self.entries_map.remove(entry_id);
             self.loaded.retain(|entry| entry.id != entry_id);
-            // Clear current entry if it was deleted
             if let Some(current) = &self.current_entry {
                 if current.id == entry_id {
                     self.current_entry = None;
@@ -135,22 +144,18 @@ impl crate::state::State {
         Ok(())
     }
 
-    /// Write all loaded entries to disk.
-    /// This can be called on exit or via a bulk :w command.
-    pub fn write_loaded_entries(&self) -> std::io::Result<()> {
+    /// write all loaded entries to disk.
+    /// can be called on exit or via a bulk :w command.
+    pub fn write_loaded_entries_to_disk(&self) -> std::io::Result<()> {
         for entry in self.entries_map.values() {
-            // Find corresponding metadata to get the file name.
             if let Some(meta) = self.master_index.entries.iter().find(|m| m.id == entry.id) {
                 let file_path = Path::new(config::ENTRIES_DIR).join(&meta.file);
                 let file = File::create(&file_path)?;
                 serde_json::to_writer_pretty(file, entry)?;
             }
         }
-        // Finally, write out the master index
+
         self.save_master_index()?;
         Ok(())
     }
-
-    // ... keep your existing methods such as init, event_loop, render, etc.
-    // (They should call load_all_entries() instead of the old parser get_entries.)
 }

@@ -1,7 +1,0 @@
-1)
-I did not know it had GPIOs, and I didn't know it even had an IMU. If you think they will help from the perspective of accurate control. To answer your other question, use whatever libraries you think would be best and most straightforward.
-2)
-If you can provide guidance on a specific operating system that will work better out of the box than vanilla raspbian, please do so. I was not aware that this was an option. Yes, I would like specific and explicit instructions on setting up the development environment for Rust, C++ and Python.
-3)
-I will need explicit and clear guidance on wiring and termination for the CAN bus using the VMX-Pi.
-I would like considerations for expanding CAN bus to multiple SPARK MAX controllers and other devices, but this is not the main focus. My main focus is to get a motor turning.
