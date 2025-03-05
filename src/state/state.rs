@@ -18,81 +18,75 @@
  */
 
 /// this file includes a lot of methods on state, though methods on state are littered kind of all over this codebase
+// src/state/state.rs
 use crossterm::{
     execute,
     terminal::{self, Clear, ClearType},
 };
+use std::{
+    collections::HashMap,
+    fs,
+    io::{stdout, Write},
+    path::Path,
+};
 
 use crate::util::{
     command_bar::CommandBar,
-    config::ENTRIES_DIR,
+    config::Config,
     mode::ModeT,
     term::DoubleBuffer,
     util::{Entry, EntryMeta, MasterIndex},
-};
-
-use std::{
-    collections::HashMap,
-    fs::{self},
 };
 
 #[derive(Debug, Clone)]
 pub struct State {
     pub buffer: DoubleBuffer,
     pub mode: ModeT,
-    pub last_mode: ModeT, // i will likely have a use for this
-    pub config: crate::util::config::Config,
-    pub loaded: Vec<crate::util::util::Entry>, // still used for listing entries
+    pub last_mode: ModeT,
+    pub config: Config,
     pub string_buffer: Vec<String>,
     pub n_fits: u32,
     pub no_entry_flag: bool,
+    pub entries_map: HashMap<String, Entry>, // mapping from entry ID to Entry
+    pub master_index: MasterIndex,           // the master index (which gives ordering)
     pub command_bar: CommandBar,
     pub command_mode: bool,
-    pub idx: u32,
-    pub idx_active: bool,
-    pub idx_selected: bool, // this may or may not go
+    pub idx: usize,       // selected index (based on master_index.entries order)
+    pub idx_active: bool, // true if there are entries
     pub active_buffer: String,
     pub buffer_editable: bool,
     pub dbg: bool,
 
-    pub master_index: MasterIndex,             // in-memory master index
-    pub entries_map: HashMap<String, Entry>, // mapping from entry ID to full Entry (for quick lookup)
-    pub current_entry: Option<Entry>,        // entry being edited (if any)
+    pub current_entry: Option<Entry>, // entry being edited (if any)
     pub current_entry_meta: Option<EntryMeta>, // corresponding metadata for the entry in edit mode
 }
 
 impl State {
     pub fn new(buffer: DoubleBuffer) -> Self {
-        let config = crate::util::config::Config::load().unwrap();
+        let config = Config::load().unwrap_or_default();
         let n_fits: u32 = (buffer.height - 4) as u32;
-        // ensure the directory exists
-        fs::create_dir_all(ENTRIES_DIR).expect("Failed to create entries directory");
-
-        // but we need a cross platform abstract function in util/config.rs for this
-
+        fs::create_dir_all(&config.entries_path)
+            .expect("Failed to create entries directory specified in config");
         Self {
             buffer,
             mode: ModeT::BROWSE,
             last_mode: ModeT::BROWSE,
             config,
-            loaded: Vec::new(),
             string_buffer: Vec::new(),
             n_fits,
             no_entry_flag: true,
+            entries_map: HashMap::new(),
+            master_index: MasterIndex::default(),
             command_bar: CommandBar {
-                buffer: String::from("test buffer on line 82 of state.rs"),
+                buffer: String::from("test buffer on state initialization"),
                 user_buffer: String::new(),
             },
             command_mode: false,
             idx: 0,
-            idx_active: false, // we initialize this as false until self.init() at which point we set it to true if loaded.len() > 0
-            idx_selected: false,
+            idx_active: false,
             active_buffer: String::new(),
             buffer_editable: false,
             dbg: true,
-
-            master_index: MasterIndex::default(),
-            entries_map: HashMap::new(),
             current_entry: None,
             current_entry_meta: None,
         }
@@ -111,7 +105,7 @@ impl State {
         self.mode = ModeT::BROWSE;
         self.load_all_entries()?;
 
-        if !self.loaded.is_empty() {
+        if !self.entries_map.is_empty() {
             self.no_entry_flag = false;
             self.idx_active = true;
         }
@@ -132,20 +126,9 @@ impl State {
         let _ = execute!(stdout, Clear(ClearType::All));
     }
 
-    /// this is really embarrassing
+    /// Example quit method.
     pub fn quit(&mut self) {
-        // TODO do something about this
         self.deconstruct();
         std::process::exit(0);
-    }
-
-    /// this computes the formatted label for every entry loaded in memory and
-    /// loads it into `string_buffer: Vec<String>`
-    ///
-    /// gets called on every resize, but at least we aren't reformatting every frame
-    pub fn populate_string_buffer(&mut self) {
-        for entry in self.loaded.iter() {
-            self.string_buffer.push(entry.stringify(self.buffer.width));
-        }
     }
 }

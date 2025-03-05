@@ -19,70 +19,90 @@
 
 /// NOTE! This file is largely untouched and incomplete, eventually this will control how we call methods on State
 /// and by parsing commands we can do things like state.write_loaded_entry_to_disk()
+// src/util/command.rs
+use std::str::FromStr;
 
-pub struct Commander {}
+use crate::state::state::State;
 
-// no command is to have more than 2 arguments
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
+/// Unique identifier for an entry (using the id from Entry).
+pub type EntryId = String;
+
+/// Command abstraction – each variant corresponds to a user action.
+#[derive(Debug)]
 pub enum Command {
-    Write,
-    Quit,
-    New(CommandArgument),
-    Shred,
-    Delete,
-    NULL,
+    AddEntry(String),     // add a new entry with the given title/label
+    DeleteEntry(EntryId), // delete the entry with the specified id
+    Save,                 // save current entry (equivalent to :w)
+    Quit,                 // quit
+    QuitForce,            // quit without saving
+    Invalid(String),      // unrecognized command.
 }
 
-impl Command {
-    pub fn from_str(s: String) -> Option<Self> {
-        let tokens: Vec<char> = s.clone().chars().collect();
-        let n = tokens.len();
-        if !n > 0 {
-            return None;
+impl FromStr for Command {
+    type Err = ();
+
+    /// simple parser splits the input on whitespace and matches the first token.
+    ///   "add My new entry" -> Command::AddEntry("My new entry".into())
+    ///   "delete <id>"     -> Command::DeleteEntry(id)
+    ///   "w" or "save"     -> Command::Save
+    ///   "q" or "quit"     -> Command::Quit
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let tokens: Vec<&str> = s.trim().splitn(2, ' ').collect();
+        if tokens.is_empty() {
+            return Err(());
         }
-
-        // for tok in tokens {}
-
-        for (i, s) in tokens.iter().enumerate() {
-            match i {
-                0_usize => match s {
-                    ' ' => {
-                        todo!()
-                    }
-                    _ => {
-                        todo!()
-                    }
-                },
-                1_usize => {
-                    // first arg
-                }
-                2_usize => {
-                    // second arg
-                }
-                _ => {
-                    // do nothing
+        match tokens[0].to_lowercase().as_str() {
+            "add" => {
+                if tokens.len() > 1 {
+                    Ok(Command::AddEntry(tokens[1].to_string()))
+                } else {
+                    Ok(Command::AddEntry(String::new()))
                 }
             }
+            "delete" => {
+                if tokens.len() > 1 {
+                    Ok(Command::DeleteEntry(tokens[1].to_string()))
+                } else {
+                    Err(())
+                }
+            }
+            "w" | "save" => Ok(Command::Save),
+            "q" | "quit" => Ok(Command::Quit),
+            "q!" => Ok(Command::QuitForce),
+            _ => Ok(Command::Invalid(s.to_string())),
         }
-        /*
-        match s.as_str() {
-            "write" | "w" => {
-                //
-            }
-
-            _ => {
-                return None;
-            }
-        } */
-        None
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, PartialOrd, Ord)]
-pub enum CommandArgument {
-    Path(String),
-    Name(String),
-    Entry(crate::util::util::Entry),
-}
+/// simple command dispatcher that acts on the State
+pub struct Commander;
 
-pub struct CommandParser {}
+impl Commander {
+    pub fn dispatch(cmd: Command, state: &mut State) {
+        match cmd {
+            Command::AddEntry(label) => {
+                state.add_entry(&label);
+            }
+            Command::DeleteEntry(id) => {
+                if let Err(e) = state.delete_entry(&id) {
+                    eprintln!("error deleting entry: {}", e);
+                }
+            }
+            Command::Save => {
+                if let Err(e) = state.save_current_entry() {
+                    eprintln!("error saving entry: {}", e);
+                }
+            }
+            Command::Quit => {
+                // Optionally warn if there are unsaved changes.
+                state.quit();
+            }
+            Command::QuitForce => {
+                state.quit();
+            }
+            Command::Invalid(s) => {
+                eprintln!("unrecognized command: {}", s);
+            }
+        }
+    }
+}

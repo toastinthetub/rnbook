@@ -17,28 +17,22 @@
  * along with rnbook. If not, see <https://www.gnu.org/licenses/>.
  */
 
-use super::state::State;
+use crate::state::state::State;
+use crate::util::command::{Command, Commander};
+use std::str::FromStr;
 
 impl State {
     pub fn submit_command(&mut self) {
-        let mut buf = self.command_bar.get_buffer_contents();
-        buf.truncate(2);
+        let input = self.command_bar.get_buffer_contents();
         self.command_bar.clear();
         self.command_bar.swap();
-        match buf.as_str() {
-            "wq" => {
-                self.command_bar.clear();
-                self.command_bar.push_str("doesnt work yet <sadge :(>")
+        match input.parse::<Command>() {
+            Ok(cmd) => {
+                Commander::dispatch(cmd, self);
             }
-            "w" => {
-                self.command_bar.clear();
-                self.command_bar
-                    .push_str("lol. no writing to disk happening here")
+            Err(_) => {
+                eprintln!("Failed to parse command: {}", input);
             }
-            "q" => {
-                self.quit();
-            }
-            _ => {}
         }
         self.command_mode = false;
     }

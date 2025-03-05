@@ -77,7 +77,7 @@ impl State {
             KeyCode::Down => {
                 if self.idx_active {
                     self.idx += 1;
-                    if self.idx >= self.loaded.len() as u32 {
+                    if self.idx >= self.entries_map.len() as usize {
                         self.idx = 0
                     } /* else {
                       }; */
@@ -86,9 +86,9 @@ impl State {
             KeyCode::Up => {
                 if self.idx_active {
                     if self.idx == 0 {
-                        self.idx = (self.loaded.len() as u32)
+                        self.idx = (self.entries_map.len() as usize)
                             .checked_sub(1)
-                            .unwrap_or(self.loaded.len() as u32);
+                            .unwrap_or(self.entries_map.len() as usize);
                     } else {
                         self.idx -= 1;
                     }

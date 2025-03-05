@@ -168,7 +168,7 @@ impl crate::state::state::State {
     }
 
     pub fn write_loaded_entries(&mut self) {
-        let num_entries = self.loaded.len();
+        let num_entries = self.entries_map.len();
         let mut idx: u32 = 0;
         let max_idx: u32 = self.buffer.height as u32 - 4;
 
@@ -183,9 +183,13 @@ impl crate::state::state::State {
                         is_dirty: false,
                     }; // TODO do something about this abomination
 
-                    let entry = self.loaded.get(i as usize).unwrap_or(&default_entry);
+                    let entry_meta = self.master_index.entries.get(i as usize).unwrap();
+                    let entry = self
+                        .entries_map
+                        .get(&entry_meta.id)
+                        .unwrap_or(&default_entry);
 
-                    let entry_string = if idx == self.idx {
+                    let entry_string = if idx == self.idx as u32 {
                         format!("> {}", entry.selected_stringify(self.buffer.width))
                     } else {
                         entry.stringify(self.buffer.width)
@@ -246,7 +250,7 @@ impl crate::state::state::State {
         self.write_colored_str_at(
             str_start_x,
             str_start_y + 4,
-            &format!("nld: {}", self.loaded.len()),
+            &format!("nld: {}", self.entries_map.len()),
             Color::Green,
             Color::Black,
         );
