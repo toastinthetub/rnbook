@@ -61,6 +61,7 @@ impl FromStr for Command {
             }
             "delete" => {
                 if tokens.len() > 1 {
+                    // todo obviously user isnt gonna input the whole id itself, selected
                     Ok(Command::DeleteEntry(tokens[1].to_string()))
                 } else {
                     Err(())

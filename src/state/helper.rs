@@ -19,6 +19,7 @@
 
 use crate::state::state::State;
 use crate::util::command::{Command, Commander};
+use crate::util::util::log_message;
 use std::str::FromStr;
 
 impl State {
@@ -36,4 +37,17 @@ impl State {
         }
         self.command_mode = false;
     }
+    /*pub fn load_selected_entry_for_edit(&mut self) {
+        if self.idx_active && self.entries_map.len() > 0 && !self.idx > self.entries_map.len() {
+            let selected_entry_meta = self.master_index.entries.get(self.idx).unwrap_or(
+                {
+                    log_message("failed to load slected entry!");
+                    &EntryMeta {
+                id: String::from("");
+                label: String::from("meta label")
+
+            }
+            });
+        }
+    }*/
 }

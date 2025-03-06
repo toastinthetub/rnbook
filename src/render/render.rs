@@ -40,6 +40,7 @@ impl State {
             return Ok(());
         } else if self.mode == ModeT::OPEN(OpenMode::EDIT) {
             // write the window and the buffer
+            // i need to put a dummy function in for the moment
         } else if self.mode == ModeT::BROWSE {
             self.write_loaded_entries();
             self.defaults();

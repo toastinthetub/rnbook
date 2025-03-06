@@ -19,8 +19,10 @@
 
 use crate::{
     state::{self, state::State},
-    util::config::{self},
-    util::util::{Entry, EntryMeta, MasterIndex},
+    util::{
+        config::{self},
+        util::{log_message, Entry, EntryMeta, MasterIndex},
+    },
 };
 
 use serde_json;
@@ -60,10 +62,14 @@ impl state::state::State {
         for meta in &self.master_index.entries {
             let file_path = self.config.entries_path.join(&meta.file);
             if file_path.exists() {
+                log_message(&format!("file path {:?} exists", file_path));
                 let file = fs::File::open(&file_path)?;
                 if let Ok(entry) = serde_json::from_reader::<_, Entry>(file) {
+                    log_message(&format!("entry {:?} inserted\n", entry));
                     self.entries_map.insert(entry.id.clone(), entry);
                 }
+            } else {
+                log_message(&format!("file path {:?} does not exist", file_path));
             }
         }
         // set the idx_active flag based on whether there are entries.

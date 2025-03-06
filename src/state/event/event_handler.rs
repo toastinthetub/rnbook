@@ -131,6 +131,9 @@ impl State {
                 if self.command_mode {
                     self.submit_command();
                 }
+                if self.mode == ModeT::BROWSE {
+                    // find selected entry, create buffer for edits made and change state to display dialogue
+                }
             }
             _ => {}
         }

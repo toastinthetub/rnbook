@@ -19,9 +19,12 @@
 
 use crossterm::style::Color;
 
-use crate::util::constant::{
-    HORIZONTAL_LINE, LEFT_LOWER_SHOULDER, LEFT_UPPER_SHOULDER, NO_ENTRIES_WARNING,
-    RIGHT_LOWER_SHOULDER, RIGHT_UPPER_SHOULDER, TOO_SMALL_WARNING, VERTICAL_LINE,
+use crate::util::{
+    constant::{
+        HORIZONTAL_LINE, LEFT_LOWER_SHOULDER, LEFT_UPPER_SHOULDER, NO_ENTRIES_WARNING,
+        RIGHT_LOWER_SHOULDER, RIGHT_UPPER_SHOULDER, TOO_SMALL_WARNING, VERTICAL_LINE,
+    },
+    util::log_message,
 };
 
 impl crate::state::state::State {
@@ -172,14 +175,16 @@ impl crate::state::state::State {
         let mut idx: u32 = 0;
         let max_idx: u32 = self.buffer.height as u32 - 4;
 
+        // log_message(&format!("self.master_index: {:?\n}", self.master_index));
+
         if num_entries > 0 {
             for i in 0..=std::cmp::min(self.n_fits, num_entries as u32) - 1 {
-                if i < max_idx {
+                if i < max_idx && !i > self.master_index.entries.len() as u32 {
                     let default_entry = crate::util::util::Entry {
-                        label: String::from("it didnt work"),
-                        date: String::from("datedate"),
-                        content: String::from("some content"),
-                        id: String::from("cum"),
+                        label: String::from("IT DIDNT WORK!"),
+                        date: String::from("Da/te/Da-Ho:ur:Ho"),
+                        content: String::from("this is some content"),
+                        id: String::from("this is an ID"),
                         is_dirty: false,
                     }; // TODO do something about this abomination
 
@@ -223,6 +228,15 @@ impl crate::state::state::State {
         let s = String::new();
 
         if !self.active_buffer.is_empty() {
+            let str: &str = "todo: write_active_buffer()";
+
+            self.write_colored_str_at(
+                (self.buffer.width / 2) - str.len() / 2,
+                self.buffer.height / 2,
+                str,
+                Color::Red,
+                Color::Black,
+            );
             //for ()
             /*
             let mut lines: Vec<&str> = self.active_buffer.lines().collect();
