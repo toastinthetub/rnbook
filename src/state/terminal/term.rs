@@ -253,13 +253,13 @@ impl crate::state::state::State {
     }
 
     pub fn write_debug_info(&mut self) {
-        let str_start_x = self.buffer.width - 19;
-        let str_start_y = self.buffer.height - 11;
+        let str_start_x = self.buffer.width - 20;
+        let str_start_y = self.buffer.height - 12;
 
         self.write_colored_rectangle(
-            self.buffer.width - 20,
+            self.buffer.width - 21,
             self.buffer.width - 2,
-            self.buffer.height - 12,
+            self.buffer.height - 13,
             self.buffer.height - 2,
             Color::Yellow,
             Color::Black,
@@ -323,6 +323,13 @@ impl crate::state::state::State {
             str_start_x,
             str_start_y + 8,
             &format!("bed: {}", self.buffer_editable),
+            Color::Green,
+            Color::Black,
+        );
+        self.write_colored_str_at(
+            str_start_x,
+            str_start_y + 9,
+            &format!("mindex: {}", self.master_index.entries.len()),
             Color::Green,
             Color::Black,
         );

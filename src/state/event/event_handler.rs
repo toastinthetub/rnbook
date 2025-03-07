@@ -115,7 +115,8 @@ impl State {
                     if c == 'c' {
                         return true; // exit on CTRL+C
                     }
-                } else if c == ':' && self.mode != ModeT::OPEN(OpenMode::EDIT) {
+                } else if c == ':' && self.mode != ModeT::OPEN(OpenMode::EDIT) && !self.command_mode
+                {
                     self.command_bar.swap();
                     self.command_mode = true;
                 } else {

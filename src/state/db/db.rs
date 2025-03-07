@@ -96,7 +96,7 @@ impl state::state::State {
         buffer
     }
 
-    /// add new entry in mem only
+    /// add new entry
     pub fn add_entry(&mut self, label: &str) {
         use uuid::Uuid;
         let new_id = Uuid::new_v4().to_string();
@@ -121,6 +121,7 @@ impl state::state::State {
         self.buffer_editable = true;
         self.entries_map.insert(new_entry.id.clone(), new_entry);
         self.master_index.entries.push(meta);
+        self.save_current_entry().unwrap();
     }
 
     /// save the currently edited entry to disk

@@ -1,1 +1,20 @@
 fix the commander and implement some real parsing stuff
+
+the biggest issue is the parsing! this is failing and returning defualt entry:
+
+let entry_meta = self.master_index.entries.get(i as usize).unwrap();
+let entry = self
+    .entries_map
+    .get(&entry_meta.id)
+    .unwrap_or(&default_entry); // failing here
+
+so the master index is being updated properly theoretically
+because we can lookup the entrymeta in the master index
+and debug print it. but the number of loaded entries for 
+some stupid fucking reason is 1 less than the num of
+entrymeta instances in the master index even though the 
+entrymeta should always point to a valid entry
+
+WAIT BREAKTHROUGH! ITS BECAUSE WHEN WE BATCH WRITE
+
+yep fixed it
